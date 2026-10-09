@@ -82,8 +82,8 @@
 需要 JDK 17 和 Android SDK（compileSdk 35）。
 
 ```bash
-git clone https://github.com/<你的用户名>/<仓库名>.git
-cd <仓库名>
+git clone https://github.com/vickysy/dtu-photo-cleaner.git
+cd dtu-photo-cleaner
 ./gradlew :app:assembleRelease
 ```
 
