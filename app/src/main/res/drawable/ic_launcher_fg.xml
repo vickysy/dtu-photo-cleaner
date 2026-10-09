@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 108x108 自适应图标前景：相框 + 山 + 太阳 + 右上角“清理”星光 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4.5"
+        android:pathData="M37,36 L67,36 Q73,36 73,42 L73,68 Q73,74 67,74 L37,74 Q31,74 31,68 L31,42 Q31,36 37,36 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,70 L47,56 L54,64 L59,59 L68,70 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,47 m-4,0 a4,4 0,1 1,8 0 a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#FFD54F"
+        android:pathData="M76,24 L78.6,31.4 L86,34 L78.6,36.6 L76,44 L73.4,36.6 L66,34 L73.4,31.4 Z" />
+</vector>

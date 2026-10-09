@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 长按桌面图标出现的快捷方式 -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutId="recent"
+        android:shortcutLongLabel="@string/shortcut_recent_long"
+        android:shortcutShortLabel="@string/shortcut_recent_short">
+        <intent
+            android:action="com.dtu.cleaner.RECENT"
+            android:targetClass="com.dtu.cleaner.MainActivity"
+            android:targetPackage="com.dtu.cleaner" />
+    </shortcut>
+</shortcuts>

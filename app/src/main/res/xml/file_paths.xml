@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 只开放这两个缓存目录给分享用：问题报告、D图 安装包 -->
+<paths>
+    <cache-path name="report" path="report/" />
+    <cache-path name="share" path="share/" />
+</paths>
