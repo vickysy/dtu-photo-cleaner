@@ -213,6 +213,24 @@ details p{color:var(--sub);margin-top:10px;font-size:15px}
 .story p+p{margin-top:12px}
 .story b{color:var(--ink)}
 
+/* 作者的书和官网 */
+.more{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-top:16px}
+.book{display:grid;grid-template-columns:150px 1fr;gap:22px;align-items:center;background:#fcf5eb;border:1px solid #efe4d2;border-radius:var(--radius);padding:24px}
+.book img{width:150px;filter:drop-shadow(0 14px 18px rgba(29,33,41,.18))}
+.book .k,.site .k{font-size:13px;font-weight:600;color:var(--green-ink)}
+.book h3{font-size:20px;line-height:1.4;margin:4px 0 6px}
+.book .sub{font-size:14px;color:var(--sub)}
+.book p.d{font-size:15px;color:var(--sub);margin-top:10px}
+.more .btn{height:42px;padding:0 18px;font-size:15px;margin-top:14px}
+.site{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;display:flex;flex-direction:column}
+.site h3{font-size:20px;margin:4px 0 8px}
+.site p{color:var(--sub);font-size:15px}
+.site ul{margin:10px 0 0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px}
+.site li{background:var(--card);border-radius:999px;padding:3px 10px;font-size:13px;color:var(--sub)}
+.site .btn{align-self:flex-start;margin-top:auto}
+.site .sp{flex:1;min-height:14px}
+@media (max-width:860px){.more{grid-template-columns:1fr}}
+@media (max-width:480px){.book{grid-template-columns:96px 1fr;gap:16px;padding:20px}.book img{width:96px}}
 footer{border-top:1px solid var(--line);padding:28px 0 40px;font-size:14px;color:var(--faint)}
 footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
 footer a:hover{color:var(--ink)}
@@ -503,6 +521,26 @@ footer .r{margin-left:auto}
       <p>我是木妈。我的手机是 512G 的，照片 7000 多张、视频 1000 多个，又满了。我想删，可每次打开相册，划了半天一张都没删掉，因为<b>删照片最难的不是删，是挑</b>。</p>
       <p>于是我用大白话跟 AI 描述了这个痛点。第二天傍晚，第一版就装在了我的手机上。后来朋友们看了都想要，我就把它开源了。</p>
       <p>有了 AI，人人都可以是 builder。做一个给大众用的产品依然很难，但做一个解决自己痛点的产品，已经很简单了。如果你也有一个“要是有个软件能做这个就好了”的念头，也许，你可以自己把它做出来。</p>
+    </div>
+    <div class="more">
+      <div class="book">
+        <img src="img/book.jpg" alt="《用好AI，轻松养出爱思考会学习的孩子》封面" width="480" height="637" loading="lazy">
+        <div>
+          <p class="k">木妈的书</p>
+          <h3>《用好AI，轻松养出爱思考会学习的孩子》</h3>
+          <p class="sub">写给普通父母的 AI 时代家庭教育实践书 · 电子工业出版社</p>
+          <p class="d">不把 AI 当答案机器，而是当孩子的思维教练。父母先成为学习者，和孩子一起从真实问题出发，观察、追问、做出作品。</p>
+          <a class="btn primary" href="https://mumaaidea.com/about" target="_blank" rel="noopener">了解这本书</a>
+        </div>
+      </div>
+      <div class="site">
+        <p class="k">木妈AIdea 官网</p>
+        <h3>带普通人和孩子用 AI 把想法变成作品</h3>
+        <p>木妈是 AI 未来教育实践者、得到 AI 学习圈特聘导师，两门家长 AI 课已有 4 万多名学员。官网上有：</p>
+        <ul><li>学习路径</li><li>真实案例库</li><li>免费 Skill 下载</li><li>问木妈</li><li>21 天 AI 实操营</li></ul>
+        <div class="sp"></div>
+        <a class="btn ghost" href="https://mumaaidea.com/" target="_blank" rel="noopener">去 mumaaidea.com</a>
+      </div>
     </div>
   </div>
 </section>
