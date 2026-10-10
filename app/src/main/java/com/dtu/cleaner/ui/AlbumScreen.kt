@@ -147,6 +147,7 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
                             }
                             if (sources.size > 1) sources.forEach { t ->
                                 val n = s.entries.count { t in it.tags && it.item.id !in s.deleted }
+                                if (n == 0) return@forEach
                                 FilterPill("$t $n", s.filter == t) { s.filter = if (s.filter == t) null else t }
                             }
                         }
@@ -171,6 +172,11 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
         }
     }
 
+    val hideFolder = rememberHideFolder(vm, { id -> s.entries.firstOrNull { it.item.id == id }?.item }) { rel ->
+        s.entries.forEach { if (it.item.relPath.startsWith(rel)) { s.deleted[it.item.id] = Unit; s.selected.remove(it.item.id) } }
+        s.filter = null
+        viewer = null
+    }
     viewer?.let { start ->
         if (visible.isEmpty()) { viewer = null; return@let }
         val actions = buildList {
@@ -182,6 +188,7 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
                 ) { id -> vm.setPraise(listOf(id), id !in vm.praise) },
             )
             add(ViewerAction(Icons.Rounded.Delete, { "删除" }) { id -> visible.firstOrNull { it.item.id == id }?.let { delete(listOf(it.item)) } })
+            add(hideFolder)
         }
         Viewer(
             entries = visible.map { e ->

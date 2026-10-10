@@ -105,12 +105,15 @@ object MediaStoreSource {
         MediaColumns.BITRATE,
     )
 
+    /** 相册里的照片 / 视频；缓存文件夹和用户选了“不看”的文件夹不算（见 [Folders]） */
     fun query(ctx: Context, video: Boolean): List<MediaItem> {
         val out = ArrayList<MediaItem>()
         val coll = collection(video)
         ctx.contentResolver.query(coll, PROJECTION, null, null, "${MediaColumns.DATE_TAKEN} DESC")?.use { c ->
             read(c, coll, video, false, out)
         }
+        val hidden = Folders.hidden(ctx)
+        out.removeAll { Folders.excluded(it.relPath, hidden) }
         return out
     }
 

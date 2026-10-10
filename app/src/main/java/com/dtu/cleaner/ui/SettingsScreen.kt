@@ -109,6 +109,25 @@ fun SettingsScreen(vm: MainViewModel) {
                 }
             }
             item {
+                // 不看的文件夹：浏览器、视频 App 的缓存图这类删不掉又不想看到的
+                InsetGroup(
+                    header = "不看的文件夹",
+                    footer = "这些文件夹里的图不显示、也不分析，文件本身没动。浏览器、视频 App 的缓存（名字以 . 开头、带 cache 或 thumbnail 的文件夹）本来就不算。" +
+                        "看大图时点“不看这个文件夹”就能加进来。",
+                ) {
+                    if (vm.hiddenFolders.isEmpty()) {
+                        IosRow("还没有", subtitle = "都在正常显示", divider = false)
+                    } else {
+                        vm.hiddenFolders.forEachIndexed { i, rel ->
+                            IosRow(
+                                rel.trimEnd('/').substringAfterLast('/').ifEmpty { rel }, subtitle = rel, value = "恢复",
+                                divider = i < vm.hiddenFolders.size - 1, onClick = { vm.unhideFolder(rel) },
+                            )
+                        }
+                    }
+                }
+            }
+            item {
                 InsetGroup(
                     header = "分享与反馈",
                     footer = "用微信发安装包时，对方收到的文件名结尾可能多出“.1”，在文件管理里把 .1 删掉就能安装。",

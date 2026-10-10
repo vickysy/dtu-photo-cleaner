@@ -344,6 +344,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return if (pages.all { it.isBlank() }) null else com.dtu.cleaner.core.ScreenText.buildNote(title, pages)
     }
 
+    // ---------- 不看的文件夹 ----------
+
+    /** 用户选了“不看”的文件夹（RELATIVE_PATH） */
+    var hiddenFolders by mutableStateOf(com.dtu.cleaner.data.Folders.hidden(application).sorted())
+        private set
+
+    /** 这个文件夹（含子文件夹）在相册里有多少张图、多少个视频 */
+    fun countIn(relPath: String): Int {
+        val lib = library ?: return 0
+        return lib.images.count { it.relPath.startsWith(relPath) } + lib.videos.count { it.relPath.startsWith(relPath) }
+    }
+
+    /** 不看这个文件夹：不删文件，只是以后不显示、不分析；设置里能恢复 */
+    fun hideFolder(relPath: String, label: String) {
+        if (relPath.isEmpty()) return
+        com.dtu.cleaner.data.Folders.hide(app, relPath)
+        hiddenFolders = com.dtu.cleaner.data.Folders.hidden(app).sorted()
+        toast("「$label」文件夹不再显示，设置里能恢复")
+        refresh()
+    }
+
+    fun unhideFolder(relPath: String) {
+        com.dtu.cleaner.data.Folders.unhide(app, relPath)
+        hiddenFolders = com.dtu.cleaner.data.Folders.hidden(app).sorted()
+        toast("已恢复，重新读相册…")
+        refresh(autoAnalyze = true)
+    }
+
     // ---------- 好评 ----------
 
     private val praisePrefs = application.getSharedPreferences("praise", android.content.Context.MODE_PRIVATE)

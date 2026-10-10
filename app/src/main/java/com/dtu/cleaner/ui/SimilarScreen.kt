@@ -119,6 +119,10 @@ fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
         )
     }
 
+    val hideFolder = rememberHideFolder(vm, { id -> s.itemOf(id) }) { rel ->
+        s.groups.forEach { g -> g.members.forEach { m -> if (s.itemOf(m.photo.id)?.relPath?.startsWith(rel) == true) s.deleted[m.photo.id] = Unit } }
+        viewer = null
+    }
     viewer?.let { (list, start) ->
         Viewer(
             entries = list.map { rp -> ViewerEntry(s.itemOf(rp.photo.id)!!, photoInfo(rp), rp.tags.filter { it !in QUIET_TAGS }) },
@@ -126,6 +130,7 @@ fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
             isMarked = { id -> s.isMarked(id) },
             onToggle = { id -> s.toggle(id) },
             onDismiss = { viewer = null },
+            actions = listOf(hideFolder),
         )
     }
 }
