@@ -19,7 +19,7 @@ import kotlin.math.roundToInt
 
 /**
  * 截图笔记：一串截图（看直播、上网课截的）
- * - 拼成长图：每张缩到同样宽度上下接起来，太长就分成几张，存进相册“D图笔记”；
+ * - 拼成长图：每张缩到同样宽度上下接起来，太长就分成几张，存进相册“轻了笔记”；
  * - 分享：长图和整理好的文字一起发给得到、微信、备忘录。
  */
 object NoteMaker {
@@ -83,7 +83,7 @@ object NoteMaker {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, "$name.jpg")
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/D图笔记/")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/轻了笔记/")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
         val uri = cr.insert(MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: error("没法在相册里新建图片")

@@ -80,15 +80,16 @@ fun IosNavBar(
     divider: Boolean = true,
     trailing: @Composable RowScope.() -> Unit = {},
 ) {
-    Column(Modifier.fillMaxWidth().background(ios.bar)) {
+    // 没有分隔线时（首页大标题还没滚上去）导航栏和页面同色
+    Column(Modifier.fillMaxWidth().background(if (divider) ios.bar else ios.bg)) {
         Box(Modifier.fillMaxWidth().statusBarsPadding().height(44.dp)) {
             if (onBack != null) {
                 Row(
                     Modifier.align(Alignment.CenterStart).padding(start = 6.dp).iosPress(onClick = onBack).padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBackIos, "返回", tint = ios.blue, modifier = Modifier.size(19.dp))
-                    Text(backText, style = IosType.body, color = ios.blue)
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBackIos, "返回", tint = ios.accent, modifier = Modifier.size(19.dp))
+                    Text(backText, style = IosType.body, color = ios.accent)
                 }
             }
             if (showTitle) {
@@ -113,7 +114,7 @@ fun LargeTitle(text: String, subtitle: String? = null) {
 
 /** 导航栏右侧的文字按钮 */
 @Composable
-fun NavAction(text: String, color: Color = ios.blue, bold: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
+fun NavAction(text: String, color: Color = ios.accent, bold: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     Text(
         text, style = IosType.body.copy(fontWeight = if (bold) FontWeight.SemiBold else FontWeight.Normal),
         color = if (enabled) color else ios.tertiary,
@@ -124,7 +125,7 @@ fun NavAction(text: String, color: Color = ios.blue, bold: Boolean = false, enab
 @Composable
 fun NavIcon(icon: ImageVector, description: String, onClick: () -> Unit) {
     Box(Modifier.size(44.dp).iosPress(onClick = onClick), contentAlignment = Alignment.Center) {
-        Icon(icon, description, tint = ios.blue, modifier = Modifier.size(24.dp))
+        Icon(icon, description, tint = ios.accent, modifier = Modifier.size(24.dp))
     }
 }
 
@@ -141,7 +142,7 @@ fun InsetGroup(
         if (header != null) {
             Text(header, style = IosType.footnote, color = ios.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 7.dp))
         }
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ios.card), content = content)
+        Column(Modifier.fillMaxWidth().cardSurface(14.dp), content = content)
         if (footer != null) {
             Text(footer, style = IosType.footnote, color = ios.secondary, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 7.dp))
         }
@@ -167,7 +168,7 @@ fun IosRow(
     subtitle: String? = null,
     value: String? = null,
     icon: ImageVector? = null,
-    iconBg: Color = ios.blue,
+    iconBg: Color = ios.brand,
     titleColor: Color = ios.label,
     enabled: Boolean = true,
     divider: Boolean = true,
@@ -198,7 +199,7 @@ fun IosRow(
 
 /** 列表里的一行纯文字按钮（蓝色/红色） */
 @Composable
-fun IosActionRow(text: String, color: Color = ios.blue, divider: Boolean = true, onClick: () -> Unit) {
+fun IosActionRow(text: String, color: Color = ios.accent, divider: Boolean = true, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().rowPress(onClick)) {
         Text(text, style = IosType.body, color = color, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 13.dp))
         if (divider) IosDivider()
@@ -237,7 +238,7 @@ fun FilledButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    color: Color = ios.blue,
+    color: Color = ios.brand,
     enabled: Boolean = true,
     height: Dp = 50.dp,
 ) {
@@ -252,7 +253,7 @@ fun FilledButton(
 
 /** 胶囊形小按钮（工具栏里用） */
 @Composable
-fun CapsuleButton(text: String, onClick: () -> Unit, color: Color = ios.blue, enabled: Boolean = true, filled: Boolean = true) {
+fun CapsuleButton(text: String, onClick: () -> Unit, color: Color = ios.brand, enabled: Boolean = true, filled: Boolean = true) {
     Box(
         Modifier.height(36.dp).clip(CircleShape)
             .background(if (!enabled) ios.fill else if (filled) color else color.copy(alpha = 0.12f))
@@ -267,7 +268,7 @@ fun CapsuleButton(text: String, onClick: () -> Unit, color: Color = ios.blue, en
 }
 
 @Composable
-fun TextAction(text: String, onClick: () -> Unit, color: Color = ios.blue, style: TextStyle = IosType.body, enabled: Boolean = true) {
+fun TextAction(text: String, onClick: () -> Unit, color: Color = ios.accent, style: TextStyle = IosType.body, enabled: Boolean = true) {
     Text(text, style = style, color = if (enabled) color else ios.tertiary, modifier = Modifier.iosPress(enabled, onClick).padding(vertical = 6.dp))
 }
 
@@ -277,13 +278,13 @@ fun FilterPill(text: String, selected: Boolean, onClick: () -> Unit) {
         text, maxLines = 1,
         style = IosType.subhead.copy(fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal),
         color = if (selected) Color.White else ios.label,
-        modifier = Modifier.clip(CircleShape).background(if (selected) ios.blue else ios.fill)
+        modifier = Modifier.clip(CircleShape).background(if (selected) ios.brand else ios.fill)
             .iosPress(onClick = onClick).padding(horizontal = 14.dp, vertical = 7.dp),
     )
 }
 
 @Composable
-fun IosProgress(fraction: Float, modifier: Modifier = Modifier, color: Color = ios.blue) {
+fun IosProgress(fraction: Float, modifier: Modifier = Modifier, color: Color = ios.brand) {
     Box(modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(ios.fill)) {
         Box(Modifier.fillMaxWidth(fraction.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(color))
     }
@@ -294,7 +295,7 @@ fun IosProgress(fraction: Float, modifier: Modifier = Modifier, color: Color = i
 fun SelectCircle(selected: Boolean, modifier: Modifier = Modifier, size: Dp = 23.dp) {
     Box(
         modifier.size(size).clip(CircleShape)
-            .background(if (selected) ios.blue else Color.Black.copy(alpha = 0.18f))
+            .background(if (selected) ios.brand else Color.Black.copy(alpha = 0.18f))
             .border(1.5.dp, Color.White, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
@@ -371,7 +372,7 @@ private fun AlertCell(a: AlertAction, modifier: Modifier) {
         Text(
             a.text,
             style = IosType.body.copy(fontWeight = if (a.role == AlertAction.Role.Cancel) FontWeight.SemiBold else FontWeight.Normal),
-            color = if (a.role == AlertAction.Role.Destructive) ios.red else ios.blue,
+            color = if (a.role == AlertAction.Role.Destructive) ios.red else ios.accent,
             maxLines = 1,
         )
     }

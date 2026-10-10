@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 单色图标（主题图标用）：格子半透明，挑出来的那格实心、星星镂空 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:scaleX="0.727" android:scaleY="0.727" android:translateX="14.015" android:translateY="15.469">
+        <path android:fillColor="#FFFFFF" android:fillAlpha="0.45" android:pathData="M26,22 H36 A4,4 0 0 1 40,26 V36 A4,4 0 0 1 36,40 H26 A4,4 0 0 1 22,36 V26 A4,4 0 0 1 26,22 Z M49,22 H59 A4,4 0 0 1 63,26 V36 A4,4 0 0 1 59,40 H49 A4,4 0 0 1 45,36 V26 A4,4 0 0 1 49,22 Z M26,45 H36 A4,4 0 0 1 40,49 V59 A4,4 0 0 1 36,63 H26 A4,4 0 0 1 22,59 V49 A4,4 0 0 1 26,45 Z M49,45 H59 A4,4 0 0 1 63,49 V59 A4,4 0 0 1 59,63 H49 A4,4 0 0 1 45,59 V49 A4,4 0 0 1 49,45 Z M72,45 H82 A4,4 0 0 1 86,49 V59 A4,4 0 0 1 82,63 H72 A4,4 0 0 1 68,59 V49 A4,4 0 0 1 72,45 Z M26,68 H36 A4,4 0 0 1 40,72 V82 A4,4 0 0 1 36,86 H26 A4,4 0 0 1 22,82 V72 A4,4 0 0 1 26,68 Z M49,68 H59 A4,4 0 0 1 63,72 V82 A4,4 0 0 1 59,86 H49 A4,4 0 0 1 45,82 V72 A4,4 0 0 1 49,68 Z M72,68 H82 A4,4 0 0 1 86,72 V82 A4,4 0 0 1 82,86 H72 A4,4 0 0 1 68,82 V72 A4,4 0 0 1 72,68 Z" />
+        <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M71,20 H83 A5,5 0 0 1 88,25 V37 A5,5 0 0 1 83,42 H71 A5,5 0 0 1 66,37 V25 A5,5 0 0 1 71,20 Z M77,25.5 L78.9,29.4 L83.2,30 L80.1,33 L80.8,37.3 L77,35.3 L73.2,37.3 L73.9,33 L70.8,30 L75.1,29.4 Z" />
+    </group>
+</vector>

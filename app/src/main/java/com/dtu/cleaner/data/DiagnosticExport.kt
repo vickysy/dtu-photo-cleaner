@@ -10,7 +10,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * 诊断数据：把每张照片的分析结果和 App 的判断写成一张 CSV 表，存到“下载/D图诊断/”。
+ * 诊断数据：把每张照片的分析结果和 App 的判断写成一张 CSV 表，存到“下载/轻了诊断/”。
  * 只包含文件名和打分数字，不包含照片本身。用来调判断规则。
  */
 object DiagnosticExport {
@@ -57,7 +57,7 @@ object DiagnosticExport {
         val values = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, name)
             put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/D图诊断")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/轻了诊断")
         }
         val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
             ?: error("无法创建文件")

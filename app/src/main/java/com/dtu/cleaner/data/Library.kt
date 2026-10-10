@@ -127,7 +127,7 @@ object LibraryBuilder {
      */
     const val FEATURE_VERSION = 3
 
-    /** D图 压缩出来的视频文件名里带这个，不再建议压缩 */
+    /** 自己压缩出来的视频文件名里带这个，不再建议压缩 */
     const val COMPRESSED_MARK = "_压缩"
 
     /** 太小的图（表情包、缩略图）不参与模糊判断和相似分组 */
@@ -212,10 +212,10 @@ object LibraryBuilder {
         for (s in images) {
             val t = texts[s.id]?.takeIf { it.modified == s.modified }
             // 没识过、或者识字规则升级了（旧结果先照用，等重新识）
-            if ((t == null || t.version != Analyzer.TEXT_VERSION) && s.mime != "image/gif" && (s.maxSide == 0 || s.maxSide >= 400)) textsPending++
+            if ((t == null || t.version != Analyzer.textVersion(s)) && s.mime != "image/gif" && (s.maxSide == 0 || s.maxSide >= 400)) textsPending++
             if (t == null) continue
-            // D图 自己的界面截图、D图 拼的长图不分类
-            val selfMade = "com_dtu_cleaner" in s.name || "com.dtu.cleaner" in s.name || "D图笔记" in s.relPath
+            // 自己的界面截图、自己拼的长图不分类（旧版叫“D图笔记”）
+            val selfMade = "com_dtu_cleaner" in s.name || "com.dtu.cleaner" in s.name || "D图笔记" in s.relPath || "轻了笔记" in s.relPath
             val paper = stored[s.id]?.features?.color?.let { ScreenText.paperFraction(it) } ?: -1f
             val kind = if (selfMade) null else ScreenText.classify(t.text, t.codes, t.layout, s.isCameraShot, paper)
             // 证件、聊天记录这些是“找东西”用的，选过保留的也照样列出来
@@ -262,7 +262,7 @@ object LibraryBuilder {
             .sortedByDescending { it.item.timeMs }
             .toList()
 
-        // 压缩：相机拍的、码率高的视频；D图 压出来的、已经压过的不再压；收藏的不动
+        // 压缩：相机拍的、码率高的视频；自己压出来的、已经压过的不再压；收藏的不动
         val compressedMap = db.loadCompressed()
         val videoById = videos.associateBy { it.id }
         val compressedPending = compressedMap.mapNotNull { (src, out) ->

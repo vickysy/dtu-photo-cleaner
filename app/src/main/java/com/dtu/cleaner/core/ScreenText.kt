@@ -18,22 +18,74 @@ enum class ShotKind(val label: String, val disposable: Boolean, val important: B
     QR("二维码", true),
 }
 
+/** 一个含汉字的字块在画面里的位置，千分比（0..1000），[n] 是汉字个数 */
+class TextBox(val l: Int, val t: Int, val r: Int, val b: Int, val n: Int) {
+    fun encode() = "$l.$t.$r.$b.$n"
+
+    companion object {
+        fun decode(s: String): TextBox? = s.split('.').mapNotNull { it.toIntOrNull() }.takeIf { it.size == 5 }
+            ?.let { TextBox(it[0], it[1], it[2], it[3], it[4]) }
+    }
+}
+
 /**
  * 字块的排布（只数含汉字的字块，图上的数字角标、图标不算）：
  * [blocks] 字块数，[left] 靠左的气泡，[right] 靠右的气泡，[switches] 从上往下左右换边的次数，
- * [coverage] 所有字块占画面的比例 0..1（拍文件、书页时字铺满画面；咖啡旁露出半本书只占一小块）。
+ * [coverage] 所有字块占画面的比例 0..1（拍文件、书页时字铺满画面；咖啡旁露出半本书只占一小块），
+ * [times] 居中的时间行（聊天记录中间的“昨天 21:30”），[boxes] 每个含汉字字块的位置，
+ * [wechatGreen] 微信绿气泡颜色占画面的千分比，[background] 最多的那种颜色占画面的百分比（聊天界面底色很平）。
+ * 不知道的记 -1。
  */
-class TextLayout(val blocks: Int, val left: Int, val right: Int, val switches: Int = 0, val coverage: Float = -1f) {
-    /** 聊天记录：左右两边都有气泡，而且来回交替 */
-    val chatLike: Boolean get() = blocks >= 5 && left >= 2 && right >= 2 && switches >= 2
+class TextLayout(
+    val blocks: Int,
+    val left: Int,
+    val right: Int,
+    val switches: Int = 0,
+    val coverage: Float = -1f,
+    val times: Int = -1,
+    val boxes: List<TextBox> = emptyList(),
+    val wechatGreen: Int = -1,
+    val background: Int = -1,
+) {
+    /** 微信聊天：有微信绿气泡（#95EC69 一带），底色又很平。海报、书封、球场的绿都不是这个颜色 */
+    val wechatChat: Boolean get() = wechatGreen >= 5 && background >= 30
 
-    fun encode() = "b=$blocks;l=$left;r=$right;s=$switches;a=${(coverage * 100).toInt()}"
+    /**
+     * 气泡排布（去掉最上面的标题栏和最下面的输入框）：左边气泡左沿对齐、右边气泡右沿对齐，
+     * 而且左右两边从不并排在同一行（表格、设置页、海报的两栏都会并排）。
+     */
+    val bubbles: Boolean get() {
+        val body = boxes.filter { it.t > 80 && it.b < 920 }
+        val l = body.filter { it.l < 300 && it.r < 780 }
+        val r = body.filter { it.l > 220 && it.r > 700 && !(it.l < 300 && it.r < 780) }
+        if (l.size + r.size < 3) return false
+        val sideBySide = l.any { a -> r.any { c -> minOf(a.b, c.b) - maxOf(a.t, c.t) > 0.3f * minOf(a.b - a.t, c.b - c.t) } }
+        return !sideBySide && maxOf(aligned(l.map { it.l }), aligned(r.map { it.r })) >= 0.75f
+    }
+
+    /** 离中位数 40‰ 以内的比例 */
+    private fun aligned(v: List<Int>): Float {
+        if (v.size < 2) return 0f
+        val m = v.sorted()[v.size / 2]
+        return v.count { kotlin.math.abs(it - m) <= 40 }.toFloat() / v.size
+    }
+
+    fun encode() = "b=$blocks;l=$left;r=$right;s=$switches;a=${(coverage * 100).toInt()}" +
+        (if (times >= 0) ";t=$times" else "") +
+        (if (wechatGreen >= 0) ";wg=$wechatGreen" else "") +
+        (if (background >= 0) ";bg=$background" else "") +
+        (if (boxes.isNotEmpty()) ";g=" + boxes.joinToString("|") { it.encode() } else "")
 
     companion object {
         fun decode(s: String?): TextLayout? {
             if (s.isNullOrEmpty()) return null
-            val m = s.split(';').mapNotNull { kv -> kv.split('=').takeIf { it.size == 2 }?.let { it[0] to it[1].toIntOrNull() } }.toMap()
-            return TextLayout(m["b"] ?: return null, m["l"] ?: 0, m["r"] ?: 0, m["s"] ?: 0, m["a"]?.let { it / 100f } ?: -1f)
+            val kv = s.split(';').mapNotNull { p -> p.split('=').takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
+            val m = kv.mapValues { it.value.toIntOrNull() }
+            return TextLayout(
+                m["b"] ?: return null, m["l"] ?: 0, m["r"] ?: 0, m["s"] ?: 0, m["a"]?.let { it / 100f } ?: -1f,
+                m["t"] ?: -1, kv["g"]?.split('|')?.mapNotNull { TextBox.decode(it) } ?: emptyList(),
+                m["wg"] ?: -1, m["bg"] ?: -1,
+            )
         }
     }
 }
@@ -63,17 +115,40 @@ object ScreenText {
     private val CAMERA_TICKET_WORDS = listOf("发票", "价税合计", "小票", "收据", "合计金额", "登机牌", "电子客票", "检票口", "门票")
     private val ORDER_STRONG = listOf("订单号", "订单编号", "运单号", "快递单号")
     private val ORDER_WEAK = listOf("实付", "退款", "物流", "已签收", "已发货", "待收货", "确认收货", "商品总价")
-    private val CHAT_WORDS = listOf("撤回了一条消息", "[语音]", "[图片]", "[表情]", "[动画表情]", "按住说话", "按住 说话", "语音通话", "视频通话", "拍了拍", "以下为新消息")
+    /** 只在聊天记录里出现的字（“按住说话”“视频通话”抖音、得到、豆包里也有，不算） */
+    private val CHAT_WORDS = listOf("撤回了一条消息", "[语音]", "[图片]", "[表情]", "[动画表情]", "拍了拍", "以下为新消息")
     /** 聊天记录中间的时间分隔：“昨天 21:30”“星期三 10:12”“下午 3:05” */
     private val CHAT_TIME = Regex("^(昨天|前天|星期[一二三四五六日天]|周[一二三四五六日天]|上午|下午|晚上|凌晨|中午|早上)\\s*\\d{1,2}[:：]\\d{2}$")
-    /** 有价格的多半是商品、点单页面，不是聊天 */
-    private val PRICE = Regex("[¥￥]\\s*\\d|\\d+(\\.\\d+)?元|月售|加入购物车|立即购买")
+    /** 聊天记录里居中的时间戳（去掉空格后整行匹配）：“10:12”“昨天21:30”“3月1日下午3:05”“2025/3/1 10:12” */
+    val CHAT_STAMP = Regex(
+        "^((\\d{4}年)?\\d{1,2}月\\d{1,2}日|\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}|昨天|前天|星期[一二三四五六日天]|周[一二三四五六日天])?" +
+            "(上午|下午|晚上|凌晨|中午|早上)?\\d{1,2}[:：]\\d{2}$",
+    )
 
     private fun countIn(words: List<String>, t: String) = words.count { it in t }
 
     /**
      * [codes] 是图里识别出的二维码/条码内容；[camera] = 相机拍的照片（不是截图、不是 App 存的图）。
      */
+    /**
+     * 从缩小后的像素（ARGB）算两样东西：微信绿气泡颜色占的千分比、最多的那种颜色占的百分比。
+     * 微信聊天的绿气泡是 #95EC69 一带（新版偏 #A9EA79）；海报、书封、球场、图表的绿都暗得多或偏蓝。
+     */
+    fun pixelStats(px: IntArray): Pair<Int, Int> {
+        if (px.isEmpty()) return -1 to -1
+        var green = 0
+        val buckets = HashMap<Int, Int>()
+        for (c in px) {
+            val r = (c shr 16) and 0xFF
+            val g = (c shr 8) and 0xFF
+            val b = c and 0xFF
+            if (g >= 215 && r in 125..185 && b in 85..130 && g - r >= 45) green++
+            val k = (r shr 4 shl 8) or (g shr 4 shl 4) or (b shr 4)
+            buckets[k] = (buckets[k] ?: 0) + 1
+        }
+        return (green * 1000 / px.size) to ((buckets.values.maxOrNull() ?: 0) * 100 / px.size)
+    }
+
     /**
      * 画面里“白纸”的比例 0..1：4×4 颜色网格里，浅色、不鲜艳的格子占多少。
      * 文件、书页、试卷大部分是纸；咖啡、展厅、海报、街景颜色丰富得多。
@@ -117,8 +192,6 @@ object ScreenText {
                 else -> null
             }
         }
-        val hasPrice = PRICE.containsMatchIn(t)
-        val shortLines = lines.isNotEmpty() && lines.count { it.length <= 20 } >= lines.size * 0.8f
         return when {
             isId -> ShotKind.ID
             PAY_WORDS.any { it in t } -> ShotKind.PAY
@@ -126,9 +199,10 @@ object ScreenText {
             PICKUP_STRONG.any { it in t } || (PICKUP_PLACES.any { it in t } && PICKUP_CODE.containsMatchIn(t)) -> ShotKind.PICKUP
             TICKET_STRONG.any { it in t } || countIn(TICKET_WEAK, t) >= 2 && !paragraph -> ShotKind.TICKET
             ORDER_STRONG.any { it in t } || countIn(ORDER_WEAK, t) >= 2 -> ShotKind.ORDER
-            CHAT_WORDS.any { it in t } || lines.any { CHAT_TIME.matches(it) } -> ShotKind.CHAT
-            // 只靠排布：左右气泡来回交替、行都很短、没有价格
-            layout != null && layout.chatLike && shortLines && !hasPrice -> ShotKind.CHAT
+            CHAT_WORDS.any { it in t } -> ShotKind.CHAT
+            layout != null && layout.wechatChat -> ShotKind.CHAT
+            // 聊天中间的时间（“昨天 21:30”），再加上对齐的气泡、左右不并排（文件列表、日程表也有时间，但会并排）
+            layout != null && (layout.times > 0 || lines.any { CHAT_TIME.matches(it) }) && layout.bubbles -> ShotKind.CHAT
             codes.isNotEmpty() && chars < 150 -> ShotKind.QR
             // 文章：成段的长句子，字还得占画面相当一块（海报上的一句标语不算）
             paragraph && chars >= 200 && (coverage < 0f || coverage >= 0.2f) -> ShotKind.LONG_TEXT

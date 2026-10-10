@@ -173,8 +173,10 @@ class DocKindsTest {
     @Test
     fun chatScreenshots() {
         assertEquals(ShotKind.CHAT, ScreenText.classify("张三 撤回了一条消息\n好的", emptyList()))
-        // 左右交替的气泡
-        assertEquals(ShotKind.CHAT, ScreenText.classify("在吗\n在\n明天几点\n九点", emptyList(), TextLayout(8, 4, 3, switches = 4, coverage = 0.3f)))
+        // 微信绿气泡、底色平
+        assertEquals(ShotKind.CHAT, ScreenText.classify("在吗\n在\n明天几点\n九点", emptyList(), TextLayout(8, 4, 3, switches = 4, coverage = 0.3f, wechatGreen = 40, background = 55)))
+        // 光是左右交替不算（海报、设置页也这样）
+        assertNull(ScreenText.classify("在吗\n在\n明天几点\n九点", emptyList(), TextLayout(8, 4, 3, switches = 4, coverage = 0.3f)))
         assertNull(ScreenText.classify("在吗\n在", emptyList(), TextLayout(2, 1, 1)))
     }
 
@@ -226,7 +228,9 @@ class DocKindsStrictTest {
 
     @Test
     fun chatNeedsRealEvidence() {
-        assertEquals(ShotKind.CHAT, ScreenText.classify("昨天 21:30\n到家了吗\n刚到", emptyList()))
+        // 时间行要配上对齐的气泡；光有时间不算（文件列表也有“前天 00:18”）
+        assertEquals(ShotKind.CHAT, ScreenText.classify("昨天 21:30\n到家了吗\n刚到", emptyList(), ChatKindsTest.bubbles()))
+        assertNull(ScreenText.classify("昨天 21:30\n到家了吗\n刚到", emptyList()))
         // 普通两栏页面，没有聊天的字、行也不短
         val twoColumns = "这是一段比较长的商品介绍文字，讲的是咖啡豆的产地和烘焙方式\n另一段很长的介绍文字，讲的是牛奶的来源和口感特点"
         assertNull(ScreenText.classify(twoColumns, emptyList(), TextLayout(8, 3, 3)))
@@ -272,7 +276,7 @@ class DocKindsCoverageTest {
         assertNull(ScreenText.classify("4.3\n4.1\n5.6\n4.3\n5.2\n4.0", emptyList(), TextLayout(0, 0, 0, 0, 0.05f)))
         // 左右都有字，但没有来回交替（两栏海报）
         assertNull(ScreenText.classify("活动时间\n报名方式\n活动地点\n联系电话", emptyList(), TextLayout(8, 4, 4, switches = 1, coverage = 0.2f)))
-        // 真聊天：左右来回
-        assertEquals(ShotKind.CHAT, ScreenText.classify("明天几点\n九点\n带伞吗\n要带", emptyList(), TextLayout(8, 4, 4, switches = 5, coverage = 0.25f)))
+        // 真聊天：左右来回，还有微信绿气泡
+        assertEquals(ShotKind.CHAT, ScreenText.classify("明天几点\n九点\n带伞吗\n要带", emptyList(), TextLayout(8, 4, 4, switches = 5, coverage = 0.25f, wechatGreen = 30, background = 50)))
     }
 }

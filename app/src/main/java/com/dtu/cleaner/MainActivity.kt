@@ -25,9 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.dtu.cleaner.ui.AlertAction
 import com.dtu.cleaner.ui.FilledButton
@@ -205,6 +203,7 @@ private fun AppRoot(vm: MainViewModel) {
         is Screen.VideoScenes -> com.dtu.cleaner.ui.VideoSceneScreen(vm, s.session)
         Screen.Recent -> com.dtu.cleaner.ui.RecentScreen(vm)
         Screen.Docs -> com.dtu.cleaner.ui.DocsScreen(vm)
+        is Screen.Album -> com.dtu.cleaner.ui.AlbumScreen(vm, s.session)
     }
 }
 
@@ -215,19 +214,14 @@ private fun PermissionScreen(onGrant: () -> Unit, onOpenSettings: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.weight(1f))
-        Box(
-            Modifier.size(92.dp).clip(RoundedCornerShape(22.dp))
-                .background(Brush.linearGradient(listOf(Color(0xFF5AC8FA), Color(0xFF007AFF)))),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.PhotoLibrary, null, tint = Color.White, modifier = Modifier.size(50.dp))
-        }
+        com.dtu.cleaner.ui.BrandMark(96.dp)
         Spacer(Modifier.height(24.dp))
-        Text("欢迎使用 D图", style = IosType.title1, color = ios.label, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(36.dp))
-        Feature(Icons.Rounded.Collections, ios.orange, "每组只留最好的一张", "连拍、重复保存的照片，自动挑出最清楚、最好看的那张")
-        Feature(Icons.Rounded.AutoAwesome, ios.indigo, "每个场景留几张精华", "同一个地方拍了几十张？帮你挑 3–5 张不重复的")
-        Feature(Icons.Rounded.Lock, ios.green, "照片不出手机", "D图 没有联网权限。删除前都会问你，30 天内能恢复")
+        Text("欢迎使用轻了相册", style = IosType.title1, color = ios.label, textAlign = TextAlign.Center)
+        Text("清了没？相册轻了，心也轻了", style = IosType.subhead, color = ios.secondary, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(32.dp))
+        Feature(Icons.Rounded.Collections, ios.brand, "每组只留最好的一张", "连拍、重复保存的照片，自动挑出最清楚、最好看的那张")
+        Feature(Icons.Rounded.AutoAwesome, ios.yellow, "每个场景留几张精华", "同一个地方拍了几十张？帮你挑 3–5 张不重复的")
+        Feature(Icons.Rounded.Lock, ios.brand, "照片不出手机", "没有联网权限。删除前都会问你，30 天内能恢复")
         Spacer(Modifier.weight(1.3f))
         Text("需要允许访问照片和视频", style = IosType.footnote, color = ios.secondary)
         Spacer(Modifier.height(12.dp))

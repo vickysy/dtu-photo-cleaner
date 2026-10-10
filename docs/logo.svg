@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" role="img" aria-label="轻了相册">
+  <!-- 3×3 照片格，右上角那格被挑出来（品牌绿 + 黄星）：拍很多，留几张 -->
+  <rect x="0.5" y="0.5" width="107" height="107" rx="24" fill="#FFFFFF" stroke="#E6E8EB"/>
+  <g transform="translate(7.8 9.48) scale(0.84)">
+    <g fill="#2FC4A0" fill-opacity="0.3">
+      <rect x="22" y="22" width="18" height="18" rx="4"/><rect x="45" y="22" width="18" height="18" rx="4"/>
+      <rect x="22" y="45" width="18" height="18" rx="4"/><rect x="45" y="45" width="18" height="18" rx="4"/><rect x="68" y="45" width="18" height="18" rx="4"/>
+      <rect x="22" y="68" width="18" height="18" rx="4"/><rect x="45" y="68" width="18" height="18" rx="4"/><rect x="68" y="68" width="18" height="18" rx="4"/>
+    </g>
+    <rect x="66" y="20" width="22" height="22" rx="5" fill="#2FC4A0"/>
+    <path fill="#F6CC45" d="M77,25.5 L78.9,29.4 L83.2,30 L80.1,33 L80.8,37.3 L77,35.3 L73.2,37.3 L73.9,33 L70.8,30 L75.1,29.4 Z"/>
+  </g>
+</svg>

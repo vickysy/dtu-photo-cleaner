@@ -68,7 +68,7 @@ fun NotesScreen(vm: MainViewModel) {
             item {
                 Footnote(
                     "连续截的一串截图（看直播、上网课、刷长文）在这里。可以拼成一张长图、把图里的字整理成一篇笔记，" +
-                        "一起发给得到、微信或备忘录。长图存在相册的“D图笔记”里，原来的截图要你自己决定删不删。",
+                        "一起发给得到、微信或备忘录。长图存在相册的“轻了笔记”里，原来的截图要你自己决定删不删。",
                 )
             }
             if (sessions.isEmpty()) item { EmptyState("没有连续截的截图") }
@@ -86,7 +86,7 @@ fun NotesScreen(vm: MainViewModel) {
                             val r = withContext(Dispatchers.IO) { runCatching { NoteMaker.longImages(ctx, shots, titleOf(s)) } }
                             busy.remove(s.startMs)
                             r.onSuccess { uris ->
-                                vm.toast("已拼成 ${uris.size} 张长图，存在相册“D图笔记”里")
+                                vm.toast("已拼成 ${uris.size} 张长图，存在相册“轻了笔记”里")
                                 NoteMaker.shareImages(ctx, uris, if (textCount > 0) noteOf(s) else null, "把长图发给…")
                             }.onFailure {
                                 AppLog.event("拼长图失败（${shots.size} 张）", it)
@@ -155,7 +155,7 @@ private fun SessionCard(
             Spacer(Modifier.height(12.dp))
             Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (busy) {
-                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = ios.blue)
+                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp, color = ios.accent)
                     Spacer(Modifier.width(10.dp))
                     Text("正在拼长图…", style = IosType.subhead, color = ios.secondary)
                 } else {

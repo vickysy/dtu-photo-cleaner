@@ -212,7 +212,7 @@ private fun PendingCard(
                         Text(Fmt.dateTime(p.source.timeMs), style = IosType.subhead, color = ios.label)
                         Text("${Fmt.bytes(p.source.size)} → ${Fmt.bytes(p.output.size)}", style = IosType.footnote, color = ios.secondary)
                     }
-                    Text("对比", style = IosType.subhead, color = ios.blue)
+                    Text("对比", style = IosType.subhead, color = ios.accent)
                 }
             }
             if (pending.size > 4) Text("还有 ${pending.size - 4} 个", style = IosType.footnote, color = ios.secondary)

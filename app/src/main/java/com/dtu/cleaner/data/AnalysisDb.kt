@@ -317,7 +317,7 @@ class AnalysisDb(ctx: Context) : SQLiteOpenHelper(ctx, "analysis.db", null, 6) {
 
     // ---------- 文字 ----------
 
-    fun putTexts(rows: List<TextRow>, ver: Int) {
+    fun putTexts(rows: List<TextRow>, ver: (MediaItem) -> Int) {
         if (rows.isEmpty()) return
         val db = writableDatabase
         db.beginTransaction()
@@ -326,7 +326,7 @@ class AnalysisDb(ctx: Context) : SQLiteOpenHelper(ctx, "analysis.db", null, 6) {
                 db.insertWithOnConflict(
                     "ocr", null,
                     ContentValues().apply {
-                        put("id", r.item.id); put("mod", r.item.modified); put("ver", ver); put("text", r.text)
+                        put("id", r.item.id); put("mod", r.item.modified); put("ver", ver(r.item)); put("text", r.text)
                         put("codes", r.codes.joinToString("\n")); put("meta", r.layout?.encode())
                     },
                     SQLiteDatabase.CONFLICT_REPLACE,

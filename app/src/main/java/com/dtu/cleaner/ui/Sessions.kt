@@ -28,6 +28,47 @@ sealed interface Screen {
     data object Recent : Screen
     /** 文字与证件：按内容分好类的截图和照片 */
     data object Docs : Screen
+    /** 分类相册里的一类（证件、聊天记录、文章与文件……）：平时看，要用时多选 */
+    class Album(val session: AlbumSession) : Screen
+}
+
+/**
+ * 分类相册：像相册一样点开就看；点“选择”再多选（也能一划多选），拼长图、分享、设为好评、删除。
+ * “用完就没用的”这类一打开就在选择状态，3 天前的已经勾上。
+ */
+class AlbumSession(
+    val title: String,
+    val note: String,
+    val entries: List<GridEntry>,
+    /** 能设为好评（聊天记录、好评本身） */
+    val praiseable: Boolean,
+    /** 一打开就是选择状态（清理用的类） */
+    val startSelecting: Boolean = false,
+) {
+    var selecting by mutableStateOf(startSelecting)
+    val selected = mutableStateMapOf<Long, Unit>()
+    val deleted = mutableStateMapOf<Long, Unit>()
+    var filter by mutableStateOf<String?>(null)
+
+    init {
+        if (startSelecting) entries.forEach { if (it.suggested) selected[it.item.id] = Unit }
+    }
+
+    fun visible(praise: Set<Long>): List<GridEntry> = entries.filter {
+        it.item.id !in deleted && when (val f = filter) {
+            null -> true
+            PRAISE -> it.item.id in praise
+            else -> f in it.tags
+        }
+    }
+
+    fun selectedItems(): List<MediaItem> = entries.filter { it.item.id in selected && it.item.id !in deleted }.map { it.item }
+
+    fun toggle(id: Long) { if (id in selected) selected.remove(id) else selected[id] = Unit }
+
+    companion object {
+        const val PRAISE = "好评"
+    }
 }
 
 /**

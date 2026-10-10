@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.Apps
-import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Collections
 import androidx.compose.material.icons.rounded.Delete
@@ -62,9 +62,9 @@ import com.dtu.cleaner.data.MediaItem
 import com.dtu.cleaner.util.Fmt
 
 /**
- * 首页：照片当主角。
- * 最上面一个大数字“现在可以腾出多少”，一个按钮从最占地方的那类开始整理；
- * 下面每类一张照片拼图卡片，清完的类收进“已清完”。只用蓝色一个主色。
+ * 首页：白底，品牌绿做按钮和数字，黄色做重点。
+ * 第一张卡是手机存储（照片、视频、其他各占多少），第二张卡是“相册还能轻多少”和开始整理；
+ * 下面每类一张照片拼图卡片，清完的类收进“已清完”。
  */
 @Composable
 fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
@@ -74,6 +74,7 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
     val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 90 } }
     val ctx = LocalContext.current
     val cats = remember(lib) { lib?.let { categories(it) } ?: emptyList() }
+    val next = remember(cats) { nextCategory(cats) }
     val recentCount = remember(lib) {
         val cutoff = System.currentTimeMillis() - 86_400_000L
         lib?.images?.count { it.isCameraShot && it.timeMs >= cutoff } ?: 0
@@ -81,20 +82,20 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
 
     IosPage(
         navBar = {
-            IosNavBar("D图", showTitle = collapsed, divider = collapsed) {
+            IosNavBar("轻了相册", showTitle = collapsed, divider = collapsed) {
                 NavIcon(Icons.Outlined.Settings, "设置") { vm.push(Screen.Settings) }
             }
         },
         toast = vm.snackbar,
     ) {
         LazyColumn(state = list, verticalArrangement = Arrangement.spacedBy(22.dp), contentPadding = PaddingValues(bottom = 40.dp)) {
-            item { LargeTitle("D图") }
+            item { BrandTitle() }
 
             if (vm.crashed) {
                 item {
                     InsetGroup {
                         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp)) {
-                            Text("D图 上次意外退出了", style = IosType.headline, color = ios.label)
+                            Text("上次意外退出了", style = IosType.headline, color = ios.label)
                             Text("可以把问题报告发给作者，帮忙修好它。报告里没有照片，也没有文件名。", style = IosType.footnote, color = ios.secondary)
                             Row {
                                 TextAction("发送报告", { vm.sendReport(ctx) }, style = IosType.subhead)
@@ -108,14 +109,18 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
 
             if (vm.access == Access.PARTIAL) {
                 item {
-                    InsetGroup(footer = "D图 需要看到整个相册，才能找出重复和拍糊的照片。") {
+                    InsetGroup(footer = "需要看到整个相册，才能找出重复和拍糊的照片。") {
                         IosRow(
                             "只允许了访问部分照片", subtitle = "点这里改成“全部允许”",
-                            icon = Icons.Rounded.Collections, iconBg = ios.blue, divider = false, onClick = onRequestFullAccess,
+                            icon = Icons.Rounded.Collections, iconBg = ios.brand, divider = false, onClick = onRequestFullAccess,
                         )
                     }
                 }
             }
+
+            item { StorageCard(vm) }
+
+            item { Hero(vm, lib, p, next) }
 
             // 刚拍了照片：拍完马上看评分
             if (recentCount > 0) {
@@ -123,14 +128,18 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
                     InsetGroup {
                         IosRow(
                             "刚拍的", subtitle = "最近 24 小时拍了 ${recentCount} 张，看评分，当场删掉拍得不好的",
-                            icon = Icons.Rounded.PhotoCamera, iconBg = ios.blue, divider = false,
+                            icon = Icons.Rounded.PhotoCamera, iconBg = ios.brand, divider = false,
                             onClick = { vm.openRecent() },
                         )
                     }
                 }
             }
 
-            item { Hero(vm, lib, p, cats) }
+            // 分类相册：平时找证件、聊天记录、文章，点一下直接打开
+            if (lib != null && (lib.docKinds.isNotEmpty() || vm.praise.isNotEmpty())) {
+                item { SectionHeader("分类相册") }
+                item { DocShortcuts(vm, lib) }
+            }
 
             // 视频压缩单独一张卡：省的空间往往比删照片多得多
             if (lib != null && (lib.compressSaving > 50_000_000L || lib.compressedPending.isNotEmpty())) {
@@ -148,7 +157,7 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
                     todo.chunked(2).forEachIndexed { i, pair ->
                         item(key = "tiles$i") {
                             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                pair.forEach { c -> CategoryTile(c, Modifier.weight(1f)) { c.open(vm) } }
+                                pair.forEach { c -> CategoryTile(c, c === next && c.reclaim > 0, Modifier.weight(1f)) { c.open(vm) } }
                                 if (pair.size == 1) Spacer(Modifier.weight(1f))
                             }
                         }
@@ -160,18 +169,12 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
                 if (lib.images.isNotEmpty()) {
                     item { SectionHeader("浏览") }
                     if (lib.aesthetic.isNotEmpty()) item { AestheticCard(lib) { vm.openGrid(GridKind.AESTHETIC) } }
-                    item {
+                    if (lib.sessions.isNotEmpty() || lib.appImages.isNotEmpty()) item {
                         InsetGroup {
-                            IosRow(
-                                "文字与证件", subtitle = docsSummary(lib),
-                                icon = Icons.Rounded.Badge, iconBg = ios.blue,
-                                divider = lib.sessions.isNotEmpty() || lib.appImages.isNotEmpty(),
-                                onClick = { vm.openDocs() },
-                            )
                             if (lib.sessions.isNotEmpty()) {
                                 IosRow(
                                     "截图笔记", subtitle = "${lib.sessions.size} 串连续截图，拼长图、整理文字",
-                                    icon = Icons.Rounded.Notes, iconBg = ios.blue, divider = lib.appImages.isNotEmpty(),
+                                    icon = Icons.Rounded.Notes, iconBg = ios.brand, divider = lib.appImages.isNotEmpty(),
                                     onClick = { vm.openNotes() },
                                 )
                             }
@@ -182,7 +185,7 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
                                 IosRow(
                                     "App 存的图", subtitle = "${Fmt.count(lib.appImages.size)} 张，$top…",
                                     value = Fmt.bytes(lib.appImages.sumOf { it.size }),
-                                    icon = Icons.Rounded.Apps, iconBg = ios.blue, divider = false,
+                                    icon = Icons.Rounded.Apps, iconBg = ios.brand, divider = false,
                                     onClick = { vm.openGrid(GridKind.APP_IMAGES) },
                                 )
                             }
@@ -205,7 +208,7 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
 
             val (n, b) = vm.cleaned
             if (n > 0) {
-                item { Footnote("D图 已帮你清理 ${Fmt.count(n)} 项，共 ${Fmt.bytes(b)}", Modifier.fillMaxWidth(), TextAlign.Center) }
+                item { Footnote("相册已经轻了 ${Fmt.bytes(b)}，清掉 ${Fmt.count(n)} 项", Modifier.fillMaxWidth(), TextAlign.Center) }
             }
         }
     }
@@ -276,14 +279,98 @@ private fun videoSummary(lib: Library): String {
     return if (counts.isEmpty()) "黑屏、误录、重复的" else counts.joinToString("，") { "${it.value} 个${it.key.label}" }
 }
 
-// ---------- 顶部大卡片 ----------
+/** 从最占地方的那类开始；预选的都清完了，还有大视频就去看大视频 */
+private fun nextCategory(cats: List<Category>): Category? =
+    cats.filter { it.count > 0 && it.reclaim > 0 }.maxByOrNull { it.reclaim } ?: cats.firstOrNull { it.count > 0 }
+
+// ---------- 标题 ----------
 
 @Composable
-private fun Hero(vm: MainViewModel, lib: Library?, p: Progress, cats: List<Category>) {
-    val st = vm.storage
+private fun BrandTitle() {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        BrandMark(36.dp)
+        Spacer(Modifier.width(10.dp))
+        Text("轻了相册", style = IosType.largeTitle, color = ios.label)
+    }
+}
+
+// ---------- 手机存储 ----------
+
+/** 第一张卡：手机存储，照片、视频、其他、可用各占多少（iPhone“储存空间”那样的分段条） */
+@Composable
+private fun StorageCard(vm: MainViewModel) {
+    val st = vm.storage ?: return
+    val lib = vm.library
+    val track = ios.gray.copy(alpha = 0.16f)
+    val other = ios.gray.copy(alpha = 0.5f)
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).cardSurface(20.dp).padding(18.dp)) {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Text("手机存储", style = IosType.headline, color = ios.label, modifier = Modifier.weight(1f))
+            Text("已用 ${Fmt.bytes(st.total - st.free)} / ${Fmt.bytes(st.total)}", style = IosType.footnote, color = ios.secondary)
+        }
+        Spacer(Modifier.height(12.dp))
+        val total = st.total.coerceAtLeast(1).toFloat()
+        val photos = (lib?.imageBytes ?: 0) / total
+        val videos = (lib?.videoBytes ?: 0) / total
+        val rest = ((st.total - st.free) / total - photos - videos).coerceAtLeast(0f)
+        Row(Modifier.fillMaxWidth().height(20.dp).clip(RoundedCornerShape(6.dp)).background(track)) {
+            StorageSegment(photos, ios.brand)
+            StorageSegment(videos, ios.yellow)
+            StorageSegment(rest, other)
+            Spacer(Modifier.weight((1f - photos - videos - rest).coerceAtLeast(0.0001f)))
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Legend(ios.brand, "照片")
+            Legend(ios.yellow, "视频")
+            Legend(other, "其他")
+            Legend(track, "可用")
+        }
+        if (lib != null) {
+            Spacer(Modifier.height(14.dp))
+            IosDivider(0.dp)
+            Spacer(Modifier.height(12.dp))
+            Row {
+                Stat("照片", Fmt.bytes(lib.imageBytes), "${Fmt.count(lib.images.size)} 张", Modifier.weight(1f))
+                Stat("视频", Fmt.bytes(lib.videoBytes), "${Fmt.count(lib.videos.size)} 个", Modifier.weight(1f))
+                Stat("可用", Fmt.bytes(st.free), if (st.free < st.total / 10) "快满了" else "", Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun RowScope.StorageSegment(fraction: Float, color: Color) {
+    if (fraction <= 0.002f) return
+    Box(Modifier.weight(fraction).fillMaxHeight().background(color))
+    Box(Modifier.width(1.5.dp).fillMaxHeight().background(ios.card))
+}
+
+@Composable
+private fun Legend(color: Color, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(9.dp).clip(CircleShape).background(color))
+        Text(" $text", style = IosType.caption, color = ios.secondary)
+    }
+}
+
+@Composable
+private fun Stat(label: String, value: String, sub: String, modifier: Modifier) {
+    Column(modifier) {
+        Text(label, style = IosType.footnote, color = ios.secondary)
+        Text(value, style = IosType.title3.copy(fontWeight = FontWeight.Bold), color = ios.label)
+        if (sub.isNotEmpty()) Text(sub, style = IosType.caption, color = if (sub == "快满了") ios.red else ios.secondary)
+    }
+}
+
+// ---------- 相册还能轻多少 ----------
+
+/** 第二张卡：相册还能轻多少 + 开始整理；分析中显示进度 */
+@Composable
+private fun Hero(vm: MainViewModel, lib: Library?, p: Progress, next: Category?) {
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(20.dp)).background(ios.card)
-            .padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 16.dp),
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).cardSurface(20.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 18.dp),
     ) {
         when {
             p.running -> Analyzing(vm, p)
@@ -291,58 +378,46 @@ private fun Hero(vm: MainViewModel, lib: Library?, p: Progress, cats: List<Categ
                 CircularProgressIndicator(color = ios.gray)
             }
             lib.features.isEmpty() || lib.outdated > 0 -> FirstAnalysis(vm, lib, p)
-            else -> Reclaim(vm, lib, p, cats)
-        }
-
-        if (st != null) {
-            Spacer(Modifier.height(18.dp))
-            val used = (st.total - st.free).toFloat() / st.total.coerceAtLeast(1)
-            Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(ios.fill)) {
-                Box(Modifier.fillMaxWidth(used.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(ios.secondary))
-            }
-            Spacer(Modifier.height(8.dp))
-            Row {
-                Text("已用 ${Fmt.bytes(st.total - st.free)} / ${Fmt.bytes(st.total)}", style = IosType.caption, color = ios.secondary, modifier = Modifier.weight(1f))
-                if (lib != null) Text("照片 ${Fmt.bytes(lib.imageBytes)} · 视频 ${Fmt.bytes(lib.videoBytes)}", style = IosType.caption, color = ios.secondary)
-            }
+            else -> Reclaim(vm, lib, p, next)
         }
     }
 }
 
 private val DisplayStyle = TextStyle(fontSize = 56.sp, lineHeight = 62.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
 
-/** 大数字：数字大、单位小 */
+/** 大数字：数字大、单位小，数字下面垫一道黄色荧光笔 */
 @Composable
 private fun BigNumber(bytes: Long) {
     val text = Fmt.bytes(bytes)
-    Text(
-        buildAnnotatedString {
-            append(text.substringBeforeLast(' '))
-            withStyle(SpanStyle(fontSize = 24.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.sp)) { append(" " + text.substringAfterLast(' ')) }
-        },
-        style = DisplayStyle, color = ios.label,
-    )
+    Row {
+        Text(
+            text.substringBeforeLast(' '), style = DisplayStyle, color = ios.label,
+            // 深色模式下黄色垫在白字下面太糊，改成一道下划线
+            modifier = Modifier.alignByBaseline().then(if (ios.dark) Modifier.highlighter(ios.yellow, 0.80f, 0.88f) else Modifier.highlighter(ios.yellow.copy(alpha = 0.85f))),
+        )
+        Text(
+            " " + text.substringAfterLast(' '), style = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.SemiBold),
+            color = ios.label, modifier = Modifier.alignByBaseline(),
+        )
+    }
 }
 
 @Composable
-private fun Reclaim(vm: MainViewModel, lib: Library, p: Progress, cats: List<Category>) {
+private fun Reclaim(vm: MainViewModel, lib: Library, p: Progress, next: Category?) {
     val (count, bytes) = remember(lib) { lib.reclaimable() }
-    // 从最占地方的那类开始；预选的都清完了，还有大视频就去看大视频
-    val next = cats.filter { it.count > 0 && it.reclaim > 0 }.maxByOrNull { it.reclaim }
-        ?: cats.firstOrNull { it.count > 0 }
     if (bytes > 0) {
-        Text("现在可以腾出", style = IosType.subhead, color = ios.secondary)
+        Text("相册还能轻", style = IosType.subhead, color = ios.secondary)
         BigNumber(bytes)
         Text(
-            "约 ${Fmt.count(count)} 张照片和视频" + (next?.let { "，先从${it.title}开始" } ?: ""),
+            "约 ${Fmt.count(count)} 张，已经替你挑好了" + (next?.let { "，先清${it.title}" } ?: ""),
             style = IosType.subhead, color = ios.secondary,
         )
     } else {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.CheckCircle, null, tint = ios.green, modifier = Modifier.size(34.dp))
+            Icon(Icons.Rounded.CheckCircle, null, tint = ios.brand, modifier = Modifier.size(34.dp))
             Spacer(Modifier.width(12.dp))
             Column {
-                Text("相册很清爽", style = IosType.title2, color = ios.label)
+                Text("相册轻了", style = IosType.title2, color = ios.label)
                 Text(if (next != null) "建议的都清完了，可以看看${next.title}" else "没有需要清理的", style = IosType.subhead, color = ios.secondary)
             }
         }
@@ -406,8 +481,8 @@ private fun SectionHeader(text: String) {
 }
 
 @Composable
-private fun CategoryTile(c: Category, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier.clip(RoundedCornerShape(18.dp)).background(ios.card).iosPress(onClick = onClick).padding(8.dp)) {
+private fun CategoryTile(c: Category, recommended: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.cardSurface(18.dp).iosPress(onClick = onClick).padding(8.dp)) {
         Mosaic(c.thumbs)
         Spacer(Modifier.height(10.dp))
         // 标题、大小、说明各占一行：半屏宽放不下“截图与录屏 118 MB”
@@ -416,7 +491,10 @@ private fun CategoryTile(c: Category, modifier: Modifier, onClick: () -> Unit) {
                 Text(c.title, style = IosType.headline, color = ios.label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = ios.tertiary, modifier = Modifier.size(20.dp))
             }
-            Text(c.sizeText, style = IosType.title3, color = if (c.reclaim > 0) ios.blue else ios.label, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(c.sizeText, style = IosType.title3, color = if (c.reclaim > 0) ios.accent else ios.label, maxLines = 1)
+                if (recommended) YellowChip("先清这个", Modifier.padding(start = 8.dp))
+            }
             Text(c.summary, style = IosType.footnote, color = ios.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -467,11 +545,11 @@ private fun Cell(item: MediaItem, modifier: Modifier) {
 @Composable
 private fun DoneRow(titles: List<String>) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(14.dp)).background(ios.card)
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).cardSurface(14.dp)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.CheckCircle, null, tint = ios.green, modifier = Modifier.size(22.dp))
+        Icon(Icons.Rounded.CheckCircle, null, tint = ios.brand, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(10.dp))
         Text("已清完", style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = ios.label)
         Spacer(Modifier.width(8.dp))
@@ -483,7 +561,7 @@ private fun DoneRow(titles: List<String>) {
 @Composable
 private fun CompressCard(lib: Library, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(18.dp)).background(ios.card)
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).cardSurface(18.dp)
             .iosPress(onClick = onClick).padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -495,12 +573,12 @@ private fun CompressCard(lib: Library, onClick: () -> Unit) {
         Column(Modifier.weight(1f)) {
             Text("压缩视频", style = IosType.headline, color = ios.label)
             if (lib.compressedPending.isNotEmpty()) {
-                Text("${lib.compressedPending.size} 个压好了，等你确认", style = IosType.footnote, color = ios.blue)
+                Text("${lib.compressedPending.size} 个压好了，等你确认", style = IosType.footnote, color = ios.accent)
             }
             if (lib.compressSaving > 0) {
                 Text(
                     "${Fmt.count(lib.compressible.size)} 个视频能再省 ${Fmt.bytes(lib.compressSaving)}",
-                    style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = ios.blue,
+                    style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = ios.accent,
                 )
                 Text("转成 1080p H.265，手机上看几乎没区别", style = IosType.footnote, color = ios.secondary)
             }
@@ -538,7 +616,7 @@ private fun AestheticCard(lib: Library, onClick: () -> Unit) {
     }
     val low = remember(lib) { lib.aesthetic.values.count { aesIsLow(it) } }
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp).clip(RoundedCornerShape(18.dp)).background(ios.card)
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp).cardSurface(18.dp)
             .iosPress(onClick = onClick).padding(8.dp),
     ) {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -566,9 +644,9 @@ private fun AestheticCard(lib: Library, onClick: () -> Unit) {
 private fun TipsCard(onDismiss: () -> Unit) {
     InsetGroup(header = "用之前先知道") {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Tip(Icons.Rounded.CheckCircle, ios.blue, "勾上的是要删的", "没勾的会留下。每组照片、每个场景都能单独删，不会连带别的。")
+            Tip(Icons.Rounded.CheckCircle, ios.brand, "勾上的是要删的", "没勾的会留下。每组照片、每个场景都能单独删，不会连带别的。")
             Tip(Icons.Rounded.Delete, ios.gray, "删了先进“最近删除”", "30 天内能恢复。清空“最近删除”才真正腾出空间。")
-            Tip(Icons.Rounded.Lock, ios.green, "照片不出手机", "分析全在手机里完成，D图 没有联网权限。")
+            Tip(Icons.Rounded.Lock, ios.yellow, "照片不出手机", "分析全在手机里完成，没有联网权限。")
             Row {
                 Spacer(Modifier.weight(1f))
                 TextAction("知道了", onDismiss, style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold))

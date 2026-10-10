@@ -43,7 +43,7 @@ object AnalysisRunner {
             try {
                 Analyzer(app, app.db, app.settings.value).run { p ->
                     state.value = p
-                    if (foreground) KeepAliveService.update(app, "D图 正在整理相册", p.label + if (p.total > 0) " ${p.done} / ${p.total}" else "…", p.done, p.total)
+                    if (foreground) KeepAliveService.update(app, "正在整理相册", p.label + if (p.total > 0) " ${p.done} / ${p.total}" else "…", p.done, p.total)
                 }
             } catch (e: CancellationException) {
                 state.value = Progress(Phase.IDLE, finishedAt = System.currentTimeMillis(), message = "已暂停，下次打开会接着分析")
@@ -90,7 +90,7 @@ class KeepAliveService : Service() {
         private const val NOTIF_ID = 1
         private var lastUpdate = 0L
         private val holders = HashSet<String>()
-        private var title = "D图 正在整理相册"
+        private var title = "正在整理相册"
         private var text = "…"
         private var done = 0
         private var total = 0

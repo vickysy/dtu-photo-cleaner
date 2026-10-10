@@ -186,12 +186,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** 把分析数据导出成 CSV（下载/D图诊断/），用来调判断规则 */
+    /** 把分析数据导出成 CSV（下载/轻了诊断/），用来调判断规则 */
     fun exportDiagnostics() {
         val lib = library ?: return
         viewModelScope.launch {
             val r = withContext(Dispatchers.IO) { runCatching { com.dtu.cleaner.data.DiagnosticExport.export(app, app.db, lib) } }
-            snackbar.showSnackbar(r.fold({ "已导出到 下载/D图诊断/$it" }, { "导出失败：${it.message}" }))
+            snackbar.showSnackbar(r.fold({ "已导出到 下载/轻了诊断/$it" }, { "导出失败：${it.message}" }))
         }
     }
 
@@ -249,7 +249,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** 把 D图 安装包发给朋友 */
+    /** 把安装包发给朋友 */
     fun shareApp(ctx: android.content.Context) {
         viewModelScope.launch {
             val r = withContext(Dispatchers.IO) { runCatching { Share.sendApp(ctx) } }
@@ -310,14 +310,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openDocs() { if (library != null) push(Screen.Docs) }
 
-    /** 打开“文字与证件”里的一类：用完就没用的 3 天前的预先勾上，证件永远不勾 */
-    fun openDocGroup(title: String, kinds: Set<com.dtu.cleaner.core.ShotKind>, note: String) {
+    /**
+     * 打开分类相册里的一类：平时是看图；清理用的类（[cleanup]）一打开就在选择状态，3 天前的预先勾上。
+     * 证件永远不预选。
+     */
+    fun openDocGroup(title: String, kinds: Set<com.dtu.cleaner.core.ShotKind>, note: String, praiseable: Boolean = false, cleanup: Boolean = false) {
         val lib = library ?: return
         val cutoff = System.currentTimeMillis() - 3 * 86_400_000L
         val entries = lib.docKinds.entries.filter { it.value in kinds }
-            .mapNotNull { (id, kind) -> lib.byId[id]?.let { m -> GridEntry(m, kind.disposable && m.timeMs < cutoff && !m.favorite, listOf(kind.label, m.source)) } }
+            .mapNotNull { (id, kind) -> lib.byId[id]?.let { m -> GridEntry(m, cleanup && kind.disposable && m.timeMs < cutoff && !m.favorite, listOf(m.source)) } }
             .sortedByDescending { it.item.timeMs }
-        push(Screen.Grid(GridSession(GridKind.DOCS, entries, title, note)))
+        push(Screen.Album(AlbumSession(title, note, entries, praiseable, startSelecting = cleanup)))
+    }
+
+    /** 好评：设为好评的聊天截图，单独一个相册 */
+    fun openPraise() {
+        val lib = library ?: return
+        val entries = praise.mapNotNull { lib.byId[it] }.sortedByDescending { it.timeMs }.map { GridEntry(it, false, listOf(it.source)) }
+        push(Screen.Album(AlbumSession("好评", "设为好评的聊天截图都在这里，不会被建议删除。多选可以拼成一张长图，发朋友圈、做宣传都方便。", entries, praiseable = true)))
+    }
+
+    // ---------- 好评 ----------
+
+    private val praisePrefs = application.getSharedPreferences("praise", android.content.Context.MODE_PRIVATE)
+
+    /** 设为好评的图片 id（存在本机） */
+    var praise by mutableStateOf(praisePrefs.getStringSet("ids", emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet())
+        private set
+
+    /** 设为好评 / 取消。设为好评的同时记成“保留”，以后不会被建议删除 */
+    fun setPraise(ids: Collection<Long>, on: Boolean) {
+        if (ids.isEmpty()) return
+        praise = if (on) praise + ids else praise - ids.toSet()
+        praisePrefs.edit().putStringSet("ids", praise.map { it.toString() }.toSet()).apply()
+        if (on) viewModelScope.launch(Dispatchers.IO) { app.db.addReviewed(ids) }
+        toast(if (on) "已设为好评 ${ids.size} 张" else "已取消好评 ${ids.size} 张")
+    }
+
+    // ---------- 拼长图、分享 ----------
+
+    var stitching by mutableStateOf(false)
+        private set
+
+    /** 按拍摄时间从早到晚拼成长图（存进相册“轻了笔记”），然后弹出分享：微信、Get笔记、备忘录都能收 */
+    fun stitchAndShare(ctx: android.content.Context, items: List<MediaItem>, title: String, onDone: () -> Unit = {}) {
+        val pics = items.filter { !it.isVideo }.sortedBy { it.timeMs }
+        if (pics.isEmpty() || stitching) return
+        stitching = true
+        viewModelScope.launch {
+            val r = withContext(Dispatchers.IO) {
+                runCatching { com.dtu.cleaner.media.NoteMaker.longImages(ctx, pics, com.dtu.cleaner.media.NoteMaker.title(System.currentTimeMillis(), title)) }
+            }
+            stitching = false
+            r.onSuccess { uris ->
+                snackbar.showSnackbar("已拼成 ${uris.size} 张长图，存在相册“轻了笔记”里")
+                com.dtu.cleaner.media.NoteMaker.shareImages(ctx, uris, null, "把长图发给…")
+                onDone()
+            }.onFailure { snackbar.showSnackbar("拼长图失败：${it.message}") }
+        }
+    }
+
+    /** 原图直接分享 */
+    fun shareItems(ctx: android.content.Context, items: List<MediaItem>) {
+        if (items.isEmpty()) return
+        com.dtu.cleaner.media.NoteMaker.shareImages(ctx, items.sortedBy { it.timeMs }.map { it.uri }, null, "发给…")
     }
 
     // ---------- 刚拍的 ----------
@@ -563,9 +619,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val n = items.size
                 snackbar.showSnackbar(
                     when (j.mode) {
-                        DeleteMode.TRASH -> "已移到回收站 $n 项（${Fmt.bytes(bytes)}），清空回收站后才真正腾出空间"
-                        DeleteMode.DELETE -> "已彻底删除 $n 项，腾出 ${Fmt.bytes(bytes)}"
-                        DeleteMode.PURGE -> "已彻底删除 $n 项，腾出 ${Fmt.bytes(bytes)}"
+                        DeleteMode.TRASH -> "相册轻了 ${Fmt.bytes(bytes)}（$n 项）。在“最近删除”里清空后，手机才真正腾出空间"
+                        DeleteMode.DELETE -> "轻了 ${Fmt.bytes(bytes)}，彻底删除 $n 项"
+                        DeleteMode.PURGE -> "轻了 ${Fmt.bytes(bytes)}，彻底删除 $n 项"
                         DeleteMode.RESTORE -> "已恢复 $n 项"
                     },
                 )

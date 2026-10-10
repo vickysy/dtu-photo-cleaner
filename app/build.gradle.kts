@@ -20,8 +20,8 @@ android {
         applicationId = "com.dtu.cleaner"
         minSdk = 30
         targetSdk = 35
-        versionCode = 22
-        versionName = "2.6.3"
+        versionCode = 25
+        versionName = "2.8.0"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 
@@ -57,7 +57,12 @@ android {
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
     // 模型文件不压缩，运行时可以直接内存映射
     androidResources { noCompress += "tflite" }
-    testOptions { unitTests.all { it.systemProperty("calibDir", System.getProperty("calibDir") ?: "") } }
+    testOptions {
+        unitTests.all {
+            it.systemProperty("calibDir", System.getProperty("calibDir") ?: "")
+            it.systemProperty("textTsv", System.getProperty("textTsv") ?: "")
+        }
+    }
 }
 
 dependencies {

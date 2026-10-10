@@ -10,3 +10,9 @@ keystore/
 .kotlin/
 *.apk
 发布/
+
+# iOS
+ios/**/xcuserdata/
+ios/build/
+*.xcresult
+.DS_Store

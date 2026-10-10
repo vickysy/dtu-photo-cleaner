@@ -76,8 +76,8 @@ fun SettingsScreen(vm: MainViewModel) {
                     else -> "清楚和好看差不多一样重要"
                 }
                 InsetGroup(
-                    header = "D图 学到的口味",
-                    footer = "你在相似照片里改了推荐（留下的不是 D图 挑的那张）再删除时，D图 会记下来，以后挑照片更像你。" +
+                    header = "学到的口味",
+                    footer = "你在相似照片里改了推荐（留下的不是推荐的那张）再删除时，会记下来，以后挑照片更像你。" +
                         if (aes + tech > 0) "已经学了 ${aes + tech} 次。" else "",
                 ) {
                     IosRow(label, subtitle = "构图美感占 ${(w * 100).toInt()}%，其余看清晰、曝光、有没有人闭眼", divider = aes + tech > 0)
@@ -87,7 +87,7 @@ fun SettingsScreen(vm: MainViewModel) {
             item {
                 InsetGroup(
                     header = "自动整理",
-                    footer = "手机的省电设置可能拦住后台任务。没跑也没关系，打开 D图 时会接着分析。",
+                    footer = "手机的省电设置可能拦住后台任务。没跑也没关系，打开 App 时会接着分析。",
                 ) {
                     IosSwitchRow("充电时分析新照片", "每天找个充电的时候，把新拍的照片分析好", st.autoAnalyze) { v ->
                         vm.updateSettings { it.copy(autoAnalyze = v) }
@@ -102,7 +102,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     header = "分享与反馈",
                     footer = "用微信发安装包时，对方收到的文件名结尾可能多出“.1”，在文件管理里把 .1 删掉就能安装。",
                 ) {
-                    IosActionRow("把 D图 发给朋友") { vm.shareApp(ctx) }
+                    IosActionRow("把轻了相册发给朋友") { vm.shareApp(ctx) }
                     IosActionRow("反馈问题", divider = false) { askReport = true }
                 }
             }
@@ -115,7 +115,7 @@ fun SettingsScreen(vm: MainViewModel) {
             }
             item {
                 Text(
-                    "D图 ${BuildConfig.VERSION_NAME}\n所有分析都在手机里完成。D图 没有联网权限，照片不会离开手机。\n" +
+                    "轻了相册 ${BuildConfig.VERSION_NAME}\n所有分析都在手机里完成。没有联网权限，照片不会离开手机。\n" +
                         "升级：拿到新安装包直接安装就行，分析结果和设置都会保留。\n" +
                         "美感评分使用 idealo 开源的 NIMA 模型（Apache-2.0），LiteRT 版本来自 litert-community。",
                     style = IosType.footnote, color = ios.secondary, textAlign = TextAlign.Center,
@@ -128,7 +128,7 @@ fun SettingsScreen(vm: MainViewModel) {
     if (askReport) {
         IosAlert(
             title = "发送问题报告？",
-            message = "报告里有：手机型号、系统版本、D图 版本、照片和视频的数量、出错记录。没有照片，也没有文件名。生成后用微信或 QQ 发给把 D图 分享给你的人。",
+            message = "报告里有：手机型号、系统版本、App 版本、照片和视频的数量、出错记录。没有照片，也没有文件名。生成后用微信或 QQ 发给把轻了相册分享给你的人。",
             actions = listOf(
                 AlertAction("取消", AlertAction.Role.Cancel) { askReport = false },
                 AlertAction("生成并发送") { askReport = false; vm.sendReport(ctx) },

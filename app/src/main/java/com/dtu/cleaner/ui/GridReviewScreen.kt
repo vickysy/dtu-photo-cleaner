@@ -145,7 +145,7 @@ fun GridReviewScreen(vm: MainViewModel, s: GridSession, subtitle: String? = null
 
 private fun hint(kind: GridKind, days: Int) = when (kind) {
     GridKind.BAD -> "明显拍废的已经勾选；标着“可能模糊”的拿不准，没勾，你看一眼再决定。点照片切换，按住横着一划可以连续选，长按看大图。"
-    GridKind.SCREENSHOTS -> "D图 认出了截图里的字：取件码、验证码、付款码这类 3 天前的、以及超过 $days 天的截图已经勾选；证件永远不勾。点照片切换，按住横着一划可以连续选，长按看大图。"
+    GridKind.SCREENSHOTS -> "认出了截图里的字：取件码、验证码、付款码这类 3 天前的、以及超过 $days 天的截图已经勾选；证件永远不勾。点照片切换，按住横着一划可以连续选，长按看大图。"
     GridKind.BIG_VIDEOS -> "按大小排序，最占地方的在前面。没有帮你勾选，点一下选中，横着一划连续选，长按播放。"
     GridKind.VIDEOS -> "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，长按播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里挑。"
     GridKind.APP_IMAGES -> "微信、小红书、得到这些 App 存到相册里的图，按来源筛选。没有帮你勾选。点照片切换，按住横着一划可以连续选，长按看大图。"

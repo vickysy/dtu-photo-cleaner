@@ -62,6 +62,14 @@ import com.dtu.cleaner.data.MediaItem
 
 class ViewerEntry(val item: MediaItem, val info: String, val tags: List<String> = emptyList())
 
+/** 看大图时底部的一排按钮（分享、好评、删除）；文字和颜色可以随当前这张变 */
+class ViewerAction(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: (Long) -> String,
+    val tint: (Long) -> Color = { Color.White },
+    val onClick: (Long) -> Unit,
+)
+
 /**
  * 全屏看大图：左右滑切换，双指/双击放大检查清晰度。
  * [isMarked] 返回 null 时不显示“保留/删除”按钮。
@@ -73,6 +81,7 @@ fun Viewer(
     isMarked: (Long) -> Boolean?,
     onToggle: (Long) -> Unit,
     onDismiss: (Int) -> Unit,
+    actions: List<ViewerAction> = emptyList(),
 ) {
     val pager = rememberPagerState(initialPage = start.coerceIn(0, (entries.size - 1).coerceAtLeast(0))) { entries.size }
     BackHandler { onDismiss(pager.currentPage) }
@@ -104,6 +113,19 @@ fun Viewer(
             ) {
                 if (e.tags.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { e.tags.forEach { SmartTag(it) } }
                 Text(e.info, style = IosType.footnote, color = Color.White.copy(alpha = 0.85f))
+                if (actions.isNotEmpty()) {
+                    Row(Modifier.fillMaxWidth()) {
+                        actions.forEach { a ->
+                            Column(
+                                Modifier.weight(1f).iosPress { a.onClick(e.item.id) }.padding(vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                Icon(a.icon, null, tint = a.tint(e.item.id), modifier = Modifier.size(24.dp))
+                                Text(a.label(e.item.id), style = IosType.caption, color = Color.White)
+                            }
+                        }
+                    }
+                }
                 val marked = isMarked(e.item.id)
                 if (marked != null) {
                     Box(

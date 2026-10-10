@@ -17,7 +17,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-/** iOS 系统配色（参考 Apple Human Interface Guidelines 的系统颜色） */
+/**
+ * 配色：白底 + 品牌绿（书封面那个绿）+ 黄色点缀。
+ * accent 是文字、图标用的绿（深一点，白底上看得清）；brand 是按钮、进度条、勾选圈这些大块的绿。
+ */
 @Immutable
 data class IosPalette(
     val bg: Color,
@@ -27,43 +30,48 @@ data class IosPalette(
     val secondary: Color,
     val tertiary: Color,
     val separator: Color,
+    /** 卡片的细边：白底页面上白卡片靠它分开 */
+    val outline: Color,
     val fill: Color,
     val pressed: Color,
     val bar: Color,
-    val blue: Color,
+    val accent: Color,
+    val brand: Color,
+    val brandSoft: Color,
+    val yellow: Color,
+    val yellowSoft: Color,
+    /** 浅黄底上的字 */
+    val onYellow: Color,
     val red: Color,
     val green: Color,
-    val orange: Color,
-    val yellow: Color,
-    val purple: Color,
-    val pink: Color,
-    val teal: Color,
-    val indigo: Color,
     val gray: Color,
     val dark: Boolean,
 )
 
+val BrandGreen = Color(0xFF2FC4A0)
+val BrandYellow = Color(0xFFF6CC45)
+
 val LightIos = IosPalette(
-    bg = Color(0xFFF2F2F7), card = Color.White, elevated = Color.White,
-    label = Color.Black, secondary = Color(0x993C3C43), tertiary = Color(0x4D3C3C43),
-    separator = Color(0x4A3C3C43), fill = Color(0x1F767680), pressed = Color(0xFFE5E5EA), bar = Color(0xF7F9F9F9),
-    blue = Color(0xFF007AFF), red = Color(0xFFFF3B30), green = Color(0xFF34C759), orange = Color(0xFFFF9500),
-    yellow = Color(0xFFFFCC00), purple = Color(0xFFAF52DE), pink = Color(0xFFFF2D55), teal = Color(0xFF30B0C7),
-    indigo = Color(0xFF5856D6), gray = Color(0xFF8E8E93), dark = false,
+    bg = Color.White, card = Color.White, elevated = Color.White,
+    label = Color(0xFF1A1A1A), secondary = Color(0x993C3C43), tertiary = Color(0x4D3C3C43),
+    separator = Color(0x333C3C43), outline = Color(0xFFECEEF0), fill = Color(0x1A767680), pressed = Color(0xFFF2F3F5), bar = Color(0xFAFFFFFF),
+    accent = Color(0xFF119C7E), brand = BrandGreen, brandSoft = Color(0xFFE8F8F3),
+    yellow = BrandYellow, yellowSoft = Color(0xFFFFF5D6), onYellow = Color(0xFF8A6A00),
+    red = Color(0xFFFF3B30), green = BrandGreen, gray = Color(0xFF8E8E93), dark = false,
 )
 
 val DarkIos = IosPalette(
     bg = Color.Black, card = Color(0xFF1C1C1E), elevated = Color(0xFF2C2C2E),
     label = Color.White, secondary = Color(0x99EBEBF5), tertiary = Color(0x4DEBEBF5),
-    separator = Color(0xA6545458), fill = Color(0x3D767680), pressed = Color(0xFF3A3A3C), bar = Color(0xF21C1C1E),
-    blue = Color(0xFF0A84FF), red = Color(0xFFFF453A), green = Color(0xFF30D158), orange = Color(0xFFFF9F0A),
-    yellow = Color(0xFFFFD60A), purple = Color(0xFFBF5AF2), pink = Color(0xFFFF375F), teal = Color(0xFF40C8E0),
-    indigo = Color(0xFF5E5CE6), gray = Color(0xFF8E8E93), dark = true,
+    separator = Color(0xA6545458), outline = Color(0xFF2C2C2E), fill = Color(0x3D767680), pressed = Color(0xFF3A3A3C), bar = Color(0xF21C1C1E),
+    accent = Color(0xFF3DD6B0), brand = BrandGreen, brandSoft = Color(0xFF12332B),
+    yellow = BrandYellow, yellowSoft = Color(0xFF3A3218), onYellow = BrandYellow,
+    red = Color(0xFFFF453A), green = BrandGreen, gray = Color(0xFF8E8E93), dark = true,
 )
 
 val LocalIos = staticCompositionLocalOf { LightIos }
 
-/** 当前配色，在 Composable 里直接用 `ios.blue` */
+/** 当前配色，在 Composable 里直接用 `ios.accent` */
 val ios: IosPalette
     @Composable @ReadOnlyComposable get() = LocalIos.current
 
@@ -84,8 +92,8 @@ object IosType {
 
 // 不随深浅色变化的常用色
 val Danger = Color(0xFFFF3B30)
-val Keep = Color(0xFF34C759)
-val Gold = Color(0xFFFFCC00)
+val Keep = BrandGreen
+val Gold = BrandYellow
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -94,15 +102,15 @@ fun DtuTheme(content: @Composable () -> Unit) {
     val p = if (dark) DarkIos else LightIos
     val scheme = if (dark) {
         darkColorScheme(
-            primary = p.blue, onPrimary = Color.White, secondary = p.gray, error = p.red,
+            primary = p.brand, onPrimary = Color.White, secondary = p.gray, error = p.red,
             background = p.bg, onBackground = p.label, surface = p.card, onSurface = p.label,
             surfaceContainer = p.card, surfaceContainerHigh = p.elevated, outline = p.separator,
         )
     } else {
         lightColorScheme(
-            primary = p.blue, onPrimary = Color.White, secondary = p.gray, error = p.red,
+            primary = p.brand, onPrimary = Color.White, secondary = p.gray, error = p.red,
             background = p.bg, onBackground = p.label, surface = p.card, onSurface = p.label,
-            surfaceContainer = p.card, surfaceContainerHigh = Color(0xFFE5E5EA), outline = p.separator,
+            surfaceContainer = p.card, surfaceContainerHigh = Color(0xFFF2F3F5), outline = p.separator,
         )
     }
     // 不要 Material 的水波纹，按下效果用 iOS 式的变灰/变淡

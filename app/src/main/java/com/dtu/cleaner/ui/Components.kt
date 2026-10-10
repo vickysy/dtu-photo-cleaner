@@ -94,18 +94,26 @@ fun PhotoCell(
     footer: String? = null,
     px: Int = 320,
     labelBg: Color? = null,
+    /** false = 只是看图（分类相册没进入选择状态），不显示勾选圈 */
+    selectable: Boolean = true,
+    aspect: Float = 1f,
+    labelIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
 ) {
     Box(
-        modifier.aspectRatio(1f)
+        modifier.aspectRatio(aspect)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null,
                 onClick = onToggle, onLongClick = onOpen,
             ),
     ) {
         ThumbImage(item, px, Modifier.fillMaxSize())
-        if (selected) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.22f)))
+        if (selectable && selected) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.22f)))
         if (label != null) Box(Modifier.align(Alignment.TopStart).padding(4.dp)) {
-            if (labelBg != null) PhotoBadge(label, bg = labelBg) else SmartTag(label)
+            when {
+                labelIcon != null -> PhotoBadge(label, icon = labelIcon, iconTint = Gold)
+                labelBg != null -> PhotoBadge(label, bg = labelBg)
+                else -> SmartTag(label)
+            }
         }
         Row(Modifier.align(Alignment.BottomStart).padding(5.dp), verticalAlignment = Alignment.CenterVertically) {
             if (item.isVideo) {
@@ -114,7 +122,7 @@ fun PhotoCell(
             }
             if (footer != null) Text((if (item.isVideo) " · " else "") + footer, style = overlayText)
         }
-        SelectCircle(selected, Modifier.align(Alignment.BottomEnd).padding(5.dp))
+        if (selectable) SelectCircle(selected, Modifier.align(Alignment.BottomEnd).padding(5.dp))
     }
 }
 

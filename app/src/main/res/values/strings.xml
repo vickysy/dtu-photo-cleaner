@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">D图</string>
+    <string name="app_name">轻了相册</string>
     <string name="shortcut_recent_short">看刚拍的</string>
     <string name="shortcut_recent_long">看刚拍的照片评分</string>
 </resources>

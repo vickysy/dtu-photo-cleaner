@@ -12,7 +12,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** 通过系统分享（微信、QQ 等）发文件：问题报告、D图 安装包。 */
+/** 通过系统分享（微信、QQ 等）发文件：问题报告、安装包。 */
 object Share {
     private fun authority(ctx: Context) = "${ctx.packageName}.files"
 
@@ -30,9 +30,9 @@ object Share {
     fun report(ctx: Context, lib: Library?, settings: AppSettings, access: String, trashCount: Int): String {
         val now = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.CHINA).format(Date())
         return buildString {
-            appendLine("D图 问题报告")
+            appendLine("轻了相册 问题报告")
             appendLine("生成时间：$now")
-            appendLine("D图 版本：${BuildConfig.VERSION_NAME}（${BuildConfig.VERSION_CODE}）")
+            appendLine("版本：${BuildConfig.VERSION_NAME}（${BuildConfig.VERSION_CODE}）")
             appendLine("手机：${AppLog.device()}")
             appendLine("相册权限：$access")
             if (lib != null) {
@@ -54,21 +54,21 @@ object Share {
     fun sendReport(ctx: Context, text: String) {
         val dir = File(ctx.cacheDir, "report").apply { mkdirs() }
         dir.listFiles()?.forEach { it.delete() }
-        val name = "D图问题报告-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.CHINA).format(Date()) + ".txt"
+        val name = "轻了相册问题报告-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.CHINA).format(Date()) + ".txt"
         val f = File(dir, name).apply { writeText(text) }
         send(ctx, f, "text/plain", "把问题报告发给…")
     }
 
-    /** 把手机上装着的这个 D图 安装包发给朋友 */
+    /** 把手机上装着的这个安装包发给朋友 */
     fun sendApp(ctx: Context) {
         val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
-        val name = "D图-相册清理-v${BuildConfig.VERSION_NAME}.apk"
+        val name = "轻了相册-v${BuildConfig.VERSION_NAME}.apk"
         val f = File(dir, name)
         val src = File(ctx.applicationInfo.sourceDir)
         if (!f.exists() || f.length() != src.length()) {
             dir.listFiles()?.forEach { it.delete() }
             src.copyTo(f, overwrite = true)
         }
-        send(ctx, f, "application/vnd.android.package-archive", "把 D图 发给…")
+        send(ctx, f, "application/vnd.android.package-archive", "把轻了相册发给…")
     }
 }

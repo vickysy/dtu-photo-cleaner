@@ -83,7 +83,7 @@ object Compressor {
                 for ((i, item) in items.withIndex()) {
                     if (!isActive) break
                     state.value = state.value.copy(current = item, percent = 0, done = i)
-                    KeepAliveService.update(app, "D图 正在压缩视频", "第 ${i + 1} / ${items.size} 个", i, items.size)
+                    KeepAliveService.update(app, "正在压缩视频", "第 ${i + 1} / ${items.size} 个", i, items.size)
                     try {
                         val outId = compressOne(app, item, keep4k)
                         app.db.putCompressed(item.id, outId)
@@ -265,7 +265,7 @@ object Compressor {
         return ContentUris.parseId(uri)
     }
 
-    /** 不要压缩版：删掉 D图 自己建的文件（不用系统确认） */
+    /** 不要压缩版：删掉自己建的文件（不用系统确认） */
     fun deleteOutputs(ctx: Context, outputs: List<MediaItem>): Int =
         outputs.sumOf { runCatching { ctx.contentResolver.delete(it.uri, null, null) }.getOrDefault(0) }
 }

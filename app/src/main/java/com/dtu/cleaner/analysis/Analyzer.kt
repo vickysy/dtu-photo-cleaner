@@ -21,6 +21,7 @@ import com.dtu.cleaner.core.Ranker
 import com.dtu.cleaner.core.SceneDetector
 import com.dtu.cleaner.core.ScreenText
 import com.dtu.cleaner.core.ShotKind
+import com.dtu.cleaner.core.TextBox
 import com.dtu.cleaner.core.TextLayout
 import com.dtu.cleaner.core.VideoFeatures
 import com.dtu.cleaner.data.AnalysisDb
@@ -187,7 +188,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
 
         // 第四步：识字。截图全部识（分类、整理笔记），照片只识“角度不同”组里的（区分不同页的文件）
         val texts = db.loadTexts()
-        fun needText(m: MediaItem) = texts[m.id].let { it == null || it.modified != m.modified || it.version != TEXT_VERSION }
+        fun needText(m: MediaItem) = texts[m.id].let { it == null || it.modified != m.modified || it.version != textVersion(m) }
         val shots = images.filter { it.isScreenshot && it.mime != "image/gif" && needText(it) }
         val docIds = looseGroups.filter { g -> !Ranker.rank(g, 1).nearIdentical }.flatten().map { it.id }.toHashSet()
         val docs = images.filter { it.id in docIds && needText(it) }
@@ -220,7 +221,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
         val texts2 = db.loadTexts()
         val rest = images.filter { m ->
             m.mime != "image/gif" && (m.maxSide == 0 || m.maxSide >= 400) &&
-                texts2[m.id].let { it == null || it.modified != m.modified || it.version != TEXT_VERSION }
+                texts2[m.id].let { it == null || it.modified != m.modified || it.version != textVersion(m) }
         }
         recognizeText(rest, Phase.TEXT_ALL, onProgress)
 
@@ -244,7 +245,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
                     async(Dispatchers.IO) {
                         val bmp = try { loadBitmap(m, if (m.isScreenshot) 1600 else if (m.isCameraShot) 1024 else 1280) } catch (e: Exception) { null }
                         val result = bmp?.let { runCatching { Tasks.await(recognizer.process(InputImage.fromBitmap(it, 0))) }.getOrNull() }
-                        val layout = if (result != null && bmp != null) layoutOf(result, bmp.width, bmp.height) else null
+                        val layout = if (result != null && bmp != null) layoutOf(result, bmp) else null
                         val codes = if (!m.isCameraShot && bmp != null) {
                             runCatching { Tasks.await(barcodes.process(InputImage.fromBitmap(bmp, 0))).mapNotNull { it.rawValue ?: it.displayValue } }.getOrDefault(emptyList())
                         } else emptyList()
@@ -254,7 +255,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
                         TextRow(m, text, codes, layout)
                     }
                 }.awaitAll()
-                db.putTexts(rows, TEXT_VERSION)
+                db.putTexts(rows) { textVersion(it) }
                 td += chunk.size
                 onProgress(Progress(phase, td, work.size))
             }
@@ -268,11 +269,14 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
      * 字块排布：只数含汉字的字块（分数角标、图标不算）；气泡靠左/靠右；从上往下左右换了几次边；
      * 所有字块占画面多大。
      */
-    private fun layoutOf(result: com.google.mlkit.vision.text.Text, w: Int, h: Int): TextLayout {
+    private fun layoutOf(result: com.google.mlkit.vision.text.Text, bmp: Bitmap): TextLayout {
+        val w = bmp.width
+        val h = bmp.height
         val all = result.textBlocks.mapNotNull { it.boundingBox }
         val area = all.sumOf { it.width().toLong() * it.height() }.toFloat() / (w.toLong() * h).coerceAtLeast(1)
-        val cjk = result.textBlocks.filter { b -> b.text.count { it in '\u4e00'..'\u9fff' } >= 2 }.mapNotNull { it.boundingBox }
-            .sortedBy { it.top }
+        val cjkBlocks = result.textBlocks.filter { b -> b.text.count { it in '\u4e00'..'\u9fff' } >= 2 && b.boundingBox != null }
+            .sortedBy { it.boundingBox!!.top }
+        val cjk = cjkBlocks.map { it.boundingBox!! }
         // 聊天气泡：左边的从头像右边开始、不到右边；右边的贴着右边、从中间往后开始
         val sides = cjk.map { r ->
             when {
@@ -284,7 +288,24 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
         var switches = 0
         var last = 0
         for (sd in sides) if (sd != 0) { if (last != 0 && sd != last) switches++; last = sd }
-        return TextLayout(cjk.size, sides.count { it == -1 }, sides.count { it == 1 }, switches, area.coerceIn(0f, 1f))
+        // 聊天记录中间居中的时间：“10:12”“昨天 21:30”“2025年3月1日 上午10:12”（最上面状态栏的不算）
+        val times = result.textBlocks.count { b ->
+            val r = b.boundingBox ?: return@count false
+            val c = (r.left + r.right) / 2f
+            r.top > h * 0.06f && kotlin.math.abs(c - w / 2f) < w * 0.08f && r.width() < w * 0.6f &&
+                ScreenText.CHAT_STAMP.matches(b.text.replace(" ", ""))
+        }
+        fun pm(v: Int, full: Int) = (v * 1000L / full.coerceAtLeast(1)).toInt().coerceIn(0, 1000)
+        val boxes = cjkBlocks.map { b ->
+            val r = b.boundingBox!!
+            TextBox(pm(r.left, w), pm(r.top, h), pm(r.right, w), pm(r.bottom, h), b.text.count { it in '\u4e00'..'\u9fff' })
+        }
+        // 颜色：缩到 72 像素宽看微信绿气泡、底色平不平
+        val small = Bitmap.createScaledBitmap(bmp, 72, max(1, h * 72 / w.coerceAtLeast(1)), true)
+        val px = IntArray(small.width * small.height).also { small.getPixels(it, 0, small.width, 0, 0, small.width, small.height) }
+        if (small !== bmp) small.recycle()
+        val (green, bg) = ScreenText.pixelStats(px)
+        return TextLayout(cjk.size, sides.count { it == -1 }, sides.count { it == 1 }, switches, area.coerceIn(0f, 1f), times, boxes, green, bg)
     }
 
     /**
@@ -470,7 +491,12 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
         private const val MIN_THUMB = 448
         /** 识字/视频分析的规则变了就 +1，旧结果会重新分析 */
         /** v2：记下字块排布（认聊天记录），证件号打码。v3：只数汉字字块、左右交替、字占画面多大 */
-        const val TEXT_VERSION = 3
+        /** 截图和 App 存的图：5 起记下每个字块的位置和微信绿气泡（认聊天记录） */
+        const val TEXT_VERSION = 5
+        /** 相机照片只分证件、票据、文件，用不到字块位置，不用为了它重识 */
+        const val CAMERA_TEXT_VERSION = 3
+
+        fun textVersion(m: MediaItem) = if (m.isCameraShot) CAMERA_TEXT_VERSION else TEXT_VERSION
         /** v2：加了中间那帧的美感分 */
         const val VIDEO_VERSION = 2
     }
