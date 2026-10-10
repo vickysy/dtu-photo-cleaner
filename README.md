@@ -10,7 +10,7 @@
 
 **所有分析都在手机上完成。轻了相册没有联网权限，照片不会离开你的手机。**
 
-> 这个 App 的作者不会写代码。手机总是满，于是用 AI（Claude Code）边聊边做，一天做出第一版，又在朋友们的反馈里一路改到现在。
+> 作者木妈是 AI 教育实践者，习惯从自己的真实问题出发，用 AI 把想法变成作品。手机总是满，于是用 AI（Claude Code）边聊边做，一天做出第一版，又在朋友们的反馈里一路改到现在。
 
 - 官网：[qingle.nativeailab.cn](https://qingle.nativeailab.cn)（国内下载快）
 - 下载：[官网](https://qingle.nativeailab.cn) 或 [Releases 页面](../../releases/latest)（APK，约 48 MB）
