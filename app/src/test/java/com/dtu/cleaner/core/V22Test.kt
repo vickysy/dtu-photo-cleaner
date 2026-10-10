@@ -164,7 +164,11 @@ class VideoScenesTest {
     @Test
     fun favoritesAlwaysKept() {
         val clips = (0 until 6).map { clip(it.toLong(), it.toLong(), 30, it * 31L, 5f + it * 0.1f, fav = it == 0) }
-        assertTrue(0L in VideoScenes.build(clips, 2).keep)
+        val sc = VideoScenes.build(clips, 2)
+        assertTrue(0L in sc.keep)
+        // 收藏的不占名额：另外推荐 2 段
+        assertEquals(2, sc.keepCount)
+        assertEquals(3, sc.keep.size)
     }
 }
 

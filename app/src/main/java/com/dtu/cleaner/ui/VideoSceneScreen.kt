@@ -153,11 +153,14 @@ private fun VideoSceneCard(
                         "${Fmt.hm(sc.startTime)}–${Fmt.hm(sc.endTime)} · ${members.size} 段 · 共 ${Fmt.duration(sc.totalDurationMs)}",
                         style = IosType.footnote, color = ios.secondary,
                     )
+                    val favs = members.count { it.id in sc.favorites }
+                    if (favs > 0) Text("另有 $favs 段收藏的也留着", style = IosType.footnote, color = ios.secondary)
                 }
+                val pickable = members.count { it.id !in sc.favorites }
                 KeepStepper(
                     "留 ${sc.keepCount} 段",
                     onMinus = if (sc.keepCount > 1) ({ s.setKeep(sc, sc.keepCount - 1) }) else null,
-                    onPlus = if (sc.keepCount < members.size) ({ s.setKeep(sc, sc.keepCount + 1) }) else null,
+                    onPlus = if (sc.keepCount < pickable) ({ s.setKeep(sc, sc.keepCount + 1) }) else null,
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -167,7 +170,10 @@ private fun VideoSceneCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 (kept + dropped).forEach { m ->
-                    ClipTile(m, marked = s.isMarked(m.id), star = m.id in sc.keep, onToggle = { s.toggle(m.id) }, onPlay = { onPlay(members, members.indexOf(m)) })
+                    ClipTile(
+                        m, marked = s.isMarked(m.id), star = m.id in sc.keep && m.id !in sc.favorites, favorite = m.id in sc.favorites,
+                        onToggle = { s.toggle(m.id) }, onPlay = { onPlay(members, members.indexOf(m)) },
+                    )
                 }
             }
             Text(
@@ -191,7 +197,7 @@ private fun VideoSceneCard(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ClipTile(m: MediaItem, marked: Boolean, star: Boolean, onToggle: () -> Unit, onPlay: () -> Unit) {
+private fun ClipTile(m: MediaItem, marked: Boolean, star: Boolean, favorite: Boolean, onToggle: () -> Unit, onPlay: () -> Unit) {
     Box(
         Modifier.width(112.dp).height(150.dp).clip(RoundedCornerShape(10.dp))
             .combinedClickable(
@@ -202,6 +208,7 @@ private fun ClipTile(m: MediaItem, marked: Boolean, star: Boolean, onToggle: () 
         ThumbImage(m, 360, Modifier.fillMaxSize())
         if (marked) Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.35f)))
         if (star) PhotoBadge("推荐", Modifier.align(Alignment.TopStart).padding(6.dp), icon = Icons.Rounded.Star, iconTint = Gold)
+        if (favorite) PhotoBadge("已收藏", Modifier.align(Alignment.TopStart).padding(6.dp))
         PhotoBadge("${Fmt.duration(m.durationMs)} · ${Fmt.bytes(m.size)}", Modifier.align(Alignment.BottomStart).padding(6.dp))
         SelectCircle(marked, Modifier.align(Alignment.BottomEnd).padding(6.dp).padding(bottom = 22.dp))
     }

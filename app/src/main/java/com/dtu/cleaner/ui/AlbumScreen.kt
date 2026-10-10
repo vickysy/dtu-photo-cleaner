@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Star
@@ -97,7 +98,15 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
                     Text(Fmt.bytes(selectedItems.sumOf { it.size }), style = IosType.caption, color = ios.secondary)
                 }
                 ToolAction(Icons.Rounded.ViewDay, if (vm.stitching) "拼图中…" else "拼长图", enabled = pics >= 1 && !vm.stitching, modifier = Modifier.weight(1f)) {
-                    vm.stitchAndShare(ctx, selectedItems, s.title) { if (!s.startSelecting) exitSelecting() }
+                    // 截图笔记：长图和整理好的文字一起发
+                    val text = s.noteTitle?.let { vm.noteOf(selectedItems, it) }
+                    vm.stitchAndShare(ctx, selectedItems, s.title, text) { if (!s.startSelecting) exitSelecting() }
+                }
+                s.noteTitle?.let { title ->
+                    val note = if (any) vm.noteOf(selectedItems, title) else null
+                    ToolAction(Icons.AutoMirrored.Rounded.Notes, "整理文字", enabled = note != null, modifier = Modifier.weight(1f)) {
+                        note?.let { com.dtu.cleaner.media.NoteMaker.shareText(ctx, it, "把笔记发给…") }
+                    }
                 }
                 ToolAction(Icons.Rounded.IosShare, "分享", enabled = any, modifier = Modifier.weight(1f)) { vm.shareItems(ctx, selectedItems) }
                 if (s.praiseable) {
@@ -155,7 +164,7 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
                     label = if (id in praise) "好评" else null,
                     labelIcon = if (id in praise) Icons.Rounded.Star else null,
                     selectable = s.selecting,
-                    aspect = 0.75f,
+                    aspect = s.aspect,
                     px = 360,
                 )
             }

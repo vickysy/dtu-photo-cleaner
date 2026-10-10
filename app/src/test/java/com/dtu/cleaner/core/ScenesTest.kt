@@ -48,9 +48,24 @@ class ScenesTest {
     @Test
     fun favoritesAlwaysKept() {
         val photos = (0 until 12).map { i -> shot(i.toLong(), i.toLong(), i * 0x1111L, 5f + i * 0.1f, fav = i == 0) }
-        val picks = SceneDetector.pick(photos, 3)
-        assertTrue(picks.any { it.id == 0L })
-        assertEquals(3, picks.size)
+        val sc = SceneDetector.build(photos, 3)
+        assertTrue(0L in sc.highlights)
+        assertEquals(listOf(0L), sc.favorites)
+        assertEquals(3, sc.keepCount)
+        assertEquals(4, sc.highlights.size) // 3 张精华 + 1 张收藏
+    }
+
+    @Test
+    fun manyFavoritesDoNotEatTheKeepCount() {
+        // 用户的真实情况：一个场景 30 张，收藏了 13 张；“留 4 张”应该是另外挑 4 张，而不是显示 17 张精华
+        val photos = (0 until 30).map { i -> shot(i.toLong(), i.toLong(), i * 0x1111L, 5f + (i % 7) * 0.1f, fav = i < 13) }
+        val sc = SceneDetector.build(photos, 4)
+        assertEquals(4, sc.keepCount)
+        assertEquals(13, sc.favorites.size)
+        val picks = sc.highlights - sc.favorites.toSet()
+        assertEquals(4, picks.size)
+        assertTrue(picks.all { it >= 13L })
+        assertEquals(17, sc.highlights.size) // 都留着：4 张精华 + 13 张收藏
     }
 
     @Test

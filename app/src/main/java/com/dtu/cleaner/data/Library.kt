@@ -180,6 +180,7 @@ object LibraryBuilder {
         val scenes = SceneDetector.segment(cameraInfos)
             .filter { members -> members.count { it.id in reviewed } < members.size * 0.8 }
             .map { SceneDetector.build(it, taste = taste) }
+            .filter { it.highlights.size < it.members.size } // 收藏的加精华已经是全部：没得删
             .sortedByDescending { it.startTime }
         val unscored = (rawGroups.flatten() + scenes.flatMap { it.members } + cameraInfos).distinctBy { it.id }
             .count { it.aesthetic == null && !BadShotRules.excludedFromGrouping(it.features) }
@@ -248,6 +249,7 @@ object LibraryBuilder {
         val videoScenes = VideoScenes.segment(vinfos.filter { it.id !in dups })
             .filter { members -> members.count { it.id in reviewed } < members.size * 0.8 }
             .map { VideoScenes.build(it) }
+            .filter { it.keep.size < it.members.size }
             .sortedByDescending { it.startTime }
         val vById = vinfos.associateBy { it.id }
         val videoSuggest = videos.asSequence()

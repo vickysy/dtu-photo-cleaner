@@ -67,8 +67,8 @@ fun NotesScreen(vm: MainViewModel) {
         LazyColumn(contentPadding = PaddingValues(top = 12.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             item {
                 Footnote(
-                    "连续截的一串截图（看直播、上网课、刷长文）在这里。可以拼成一张长图、把图里的字整理成一篇笔记，" +
-                        "一起发给得到、微信或备忘录。长图存在相册的“轻了笔记”里，原来的截图要你自己决定删不删。",
+                    "连续截的一串截图（看直播、上网课、刷长文）在这里。点缩略图看大图；点“挑几张”只选要的那几张，" +
+                        "再拼成长图、整理成文字，发给得到、微信、Get笔记或备忘录。长图存在相册的“轻了笔记”里，原来的截图要你自己决定删不删。",
                 )
             }
             if (sessions.isEmpty()) item { EmptyState("没有连续截的截图") }
@@ -96,6 +96,7 @@ fun NotesScreen(vm: MainViewModel) {
                     },
                     onText = { NoteMaker.shareText(ctx, noteOf(s), "把笔记发给…") },
                     onShareAll = { NoteMaker.shareImages(ctx, shots.map { it.uri }, null, "把截图发给…") },
+                    onPick = { vm.openShotSession(s, titleOf(s)) },
                     onDelete = { vm.delete(shots, vm.deleteModeFromSettings()) { ids -> if (ids.isNotEmpty()) gone[s.startMs] = Unit } },
                 )
             }
@@ -125,17 +126,22 @@ private fun SessionCard(
     onLongImage: () -> Unit,
     onText: () -> Unit,
     onShareAll: () -> Unit,
+    onPick: () -> Unit,
     onDelete: () -> Unit,
 ) {
     InsetGroup {
         Column(Modifier.padding(top = 14.dp, bottom = 10.dp)) {
-            Column(Modifier.padding(horizontal = 16.dp)) {
-                Text(title, style = IosType.headline, color = ios.label, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(
-                    "${Fmt.day(s.startMs)} ${Fmt.hm(s.startMs)}–${Fmt.hm(s.endMs)} · ${shots.size} 张" +
-                        if (textCount > 0) " · ${textCount} 张认出了字" else "",
-                    style = IosType.footnote, color = ios.secondary,
-                )
+            Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.Top) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, style = IosType.headline, color = ios.label, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        "${Fmt.day(s.startMs)} ${Fmt.hm(s.startMs)}–${Fmt.hm(s.endMs)} · ${shots.size} 张" +
+                            if (textCount > 0) " · ${textCount} 张认出了字" else "",
+                        style = IosType.footnote, color = ios.secondary,
+                    )
+                }
+                // 不想全部都要：打开这一串，挑几张再拼、再整理
+                TextAction("挑几张 ›", onPick, style = IosType.subhead, modifier = Modifier.padding(start = 12.dp))
             }
             Spacer(Modifier.height(10.dp))
             Row(
@@ -159,13 +165,13 @@ private fun SessionCard(
                     Spacer(Modifier.width(10.dp))
                     Text("正在拼长图…", style = IosType.subhead, color = ios.secondary)
                 } else {
-                    CapsuleButton("拼成长图并分享", onLongImage)
+                    CapsuleButton("全部拼成长图", onLongImage)
                 }
                 Spacer(Modifier.weight(1f))
             }
             Row(Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (textCount > 0) {
-                    TextAction("分享文字", onText, style = IosType.subhead)
+                    TextAction("全部整理成文字", onText, style = IosType.subhead)
                     Spacer(Modifier.width(20.dp))
                 }
                 TextAction("分享原图", onShareAll, style = IosType.subhead)

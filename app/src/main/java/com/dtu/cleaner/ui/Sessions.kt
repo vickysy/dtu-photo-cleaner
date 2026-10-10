@@ -44,6 +44,10 @@ class AlbumSession(
     val praiseable: Boolean,
     /** 一打开就是选择状态（清理用的类） */
     val startSelecting: Boolean = false,
+    /** 格子的宽高比：截图笔记用 0.5（截图是竖长的），其余 0.75 */
+    val aspect: Float = 0.75f,
+    /** 截图笔记：选中的几张能“整理成文字”，笔记标题用它 */
+    val noteTitle: String? = null,
 ) {
     var selecting by mutableStateOf(startSelecting)
     val selected = mutableStateMapOf<Long, Unit>()

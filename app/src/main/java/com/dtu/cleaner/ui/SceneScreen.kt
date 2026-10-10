@@ -148,7 +148,7 @@ fun SceneScreen(vm: MainViewModel, s: SceneSession) {
                     s.itemOf(p.id)!!,
                     "${Fmt.dateTime(p.timeMs)} · ${Fmt.bytes(p.size)}" +
                         (if (p.aestheticKnown) "\n美感 ${"%.1f".format(p.aesthetic)} · 清晰度 ${p.features.peakSharpness.toInt()}" else ""),
-                    if (p.id in sc.highlights) listOf("精华") else emptyList(),
+                    when (p.id) { in sc.favorites -> listOf("已收藏"); in sc.highlights -> listOf("精华"); else -> emptyList() },
                 )
             },
             start = start,
@@ -173,11 +173,15 @@ private fun SceneCard(s: SceneSession, sc: Scene, tiles: TileRegistry, onOpen: (
                 Column(Modifier.weight(1f)) {
                     Text(Fmt.day(sc.startTime), style = IosType.headline, color = ios.label)
                     Text("${Fmt.hm(sc.startTime)}–${Fmt.hm(sc.endTime)} · 拍了 ${members.size} 张", style = IosType.footnote, color = ios.secondary)
+                    val favs = members.count { it.id in sc.favorites }
+                    if (favs > 0) Text("另有 $favs 张收藏的也留着", style = IosType.footnote, color = ios.secondary)
                 }
+                // “留几张”只算挑出来的精华，收藏的不占名额
+                val pickable = members.count { it.id !in sc.favorites }
                 Stepper(
                     "留 ${sc.keepCount} 张",
                     onMinus = if (sc.keepCount > 1) ({ s.setKeep(sc, sc.keepCount - 1) }) else null,
-                    onPlus = if (sc.keepCount < members.size) ({ s.setKeep(sc, sc.keepCount + 1) }) else null,
+                    onPlus = if (sc.keepCount < pickable) ({ s.setKeep(sc, sc.keepCount + 1) }) else null,
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -186,7 +190,7 @@ private fun SceneCard(s: SceneSession, sc: Scene, tiles: TileRegistry, onOpen: (
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                kept.forEach { p -> HighlightTile(s, p, star = p.id in sc.highlights, showScore = s.sortByAes) { onOpen(members.indexOf(p)) } }
+                kept.forEach { p -> HighlightTile(s, p, star = p.id in sc.highlights && p.id !in sc.favorites, showScore = s.sortByAes) { onOpen(members.indexOf(p)) } }
                 if (kept.isEmpty()) {
                     Box(Modifier.height(132.dp).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                         Text("这个场景一张都不留", style = IosType.subhead, color = ios.secondary)
@@ -217,6 +221,7 @@ private fun SceneCard(s: SceneSession, sc: Scene, tiles: TileRegistry, onOpen: (
                             modifier = mod.tile(tiles, p.id).clip(RoundedCornerShape(4.dp)),
                             label = when {
                                 s.sortByAes && p.aestheticKnown -> aesText(p.aesthetic!!)
+                                p.id in sc.favorites -> "已收藏"
                                 p.id in sc.highlights -> "精华"
                                 else -> null
                             },

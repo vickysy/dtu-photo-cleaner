@@ -5,8 +5,11 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
-/** 一个场景里拍的好几段视频；[keep] 是推荐留下的（按推荐顺序） */
-class VideoScene(val key: Long, val members: List<VideoInfo>, val keep: List<Long>, val keepCount: Int) {
+/**
+ * 一个场景里拍的好几段视频；[keep] 是留下的（先是推荐的，按推荐顺序，再是收藏的），
+ * [keepCount] 是推荐几段（不算收藏的），[favorites] 收藏的一律留着。
+ */
+class VideoScene(val key: Long, val members: List<VideoInfo>, val keep: List<Long>, val keepCount: Int, val favorites: List<Long> = emptyList()) {
     val startTime: Long get() = members.first().timeMs
     val endTime: Long get() = members.last().let { it.timeMs + it.durationMs }
     val totalDurationMs: Long get() = members.sumOf { it.durationMs }
@@ -71,7 +74,7 @@ object VideoScenes {
         return 0.5f * hashSim + 0.2f * colorSim + 0.3f * timeSim
     }
 
-    /** 挑 [k] 段：收藏的先留；其余看“好”和“跟已挑的不重复”（MMR） */
+    /** 在没收藏的里挑 [k] 段：看“好”和“跟已挑的、收藏的不重复”（MMR） */
     fun pick(members: List<VideoInfo>, k: Int): List<VideoInfo> {
         if (members.isEmpty()) return emptyList()
         val known = members.mapNotNull { it.f.aesthetic?.takeIf { a -> a > 0f } }
@@ -79,15 +82,15 @@ object VideoScenes {
         val std = if (known.size < 2) 0f else sqrt(known.map { (it - mean) * (it - mean) }.average().toFloat())
         val q = members.associate { it.id to quality(it, mean, std) }
         val span = members.maxOf { it.timeMs } - members.minOf { it.timeMs }
+        val favorites = members.filter { it.favorite }
+        val pool = members.filter { !it.favorite }
         val picked = ArrayList<VideoInfo>()
-        members.filter { it.favorite }.forEach { picked.add(it) }
-        val target = max(k, picked.size)
-        while (picked.size < min(target, members.size)) {
+        while (picked.size < min(k, pool.size)) {
             var best: VideoInfo? = null
             var bestScore = Float.NEGATIVE_INFINITY
-            for (m in members) {
+            for (m in pool) {
                 if (m in picked) continue
-                val redundancy = picked.maxOfOrNull { similarity(m, it, span) } ?: 0f
+                val redundancy = (picked + favorites).maxOfOrNull { similarity(m, it, span) } ?: 0f
                 val s = q.getValue(m.id) - 0.6f * redundancy
                 if (s > bestScore) { bestScore = s; best = m }
             }
@@ -96,8 +99,11 @@ object VideoScenes {
         return picked
     }
 
-    fun build(members: List<VideoInfo>, keep: Int = defaultKeep(members.size)): VideoScene {
+    /** 收藏的一律留着，不占“留几段”的名额 */
+    fun build(members: List<VideoInfo>, keep: Int = defaultKeep(members.count { !it.favorite })): VideoScene {
         val sorted = members.sortedBy { it.timeMs }
-        return VideoScene(sorted.first().id, sorted, pick(sorted, keep).map { it.id }, keep)
+        val favorites = sorted.filter { it.favorite }.map { it.id }
+        val picks = pick(sorted, keep).map { it.id }
+        return VideoScene(sorted.first().id, sorted, picks + favorites, picks.size, favorites)
     }
 }

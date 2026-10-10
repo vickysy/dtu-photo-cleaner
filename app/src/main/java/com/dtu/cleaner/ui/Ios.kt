@@ -268,8 +268,8 @@ fun CapsuleButton(text: String, onClick: () -> Unit, color: Color = ios.brand, e
 }
 
 @Composable
-fun TextAction(text: String, onClick: () -> Unit, color: Color = ios.accent, style: TextStyle = IosType.body, enabled: Boolean = true) {
-    Text(text, style = style, color = if (enabled) color else ios.tertiary, modifier = Modifier.iosPress(enabled, onClick).padding(vertical = 6.dp))
+fun TextAction(text: String, onClick: () -> Unit, color: Color = ios.accent, style: TextStyle = IosType.body, enabled: Boolean = true, modifier: Modifier = Modifier) {
+    Text(text, style = style, color = if (enabled) color else ios.tertiary, modifier = modifier.iosPress(enabled, onClick).padding(vertical = 6.dp))
 }
 
 @Composable

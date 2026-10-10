@@ -18,9 +18,12 @@ class Scene(
     val key: Long,
     /** 按时间排序 */
     val members: List<PhotoInfo>,
-    /** 推荐保留的照片 id（按推荐顺序） */
+    /** 留下的照片 id：先是挑出来的精华（按推荐顺序），再是收藏的 */
     val highlights: List<Long>,
+    /** 挑几张精华（不算收藏的） */
     val keepCount: Int,
+    /** 收藏的照片：一律留着，但不占“留几张”的名额 */
+    val favorites: List<Long> = emptyList(),
 ) {
     val startTime: Long get() = members.first().timeMs
     val endTime: Long get() = members.last().timeMs
@@ -69,9 +72,15 @@ object SceneDetector {
         else -> 5
     }
 
-    fun build(members: List<PhotoInfo>, keep: Int = defaultKeep(members.size), taste: Taste = Taste.NORMAL): Scene {
+    /**
+     * 收藏的一律留着，不占名额：“留 4 张”就是在没收藏的里面再挑 4 张
+     * （以前收藏的先占名额，收藏 13 张时卡片写“留 4 张”却显示 17 张精华）。
+     */
+    fun build(members: List<PhotoInfo>, keep: Int = defaultKeep(members.count { !it.favorite }), taste: Taste = Taste.NORMAL): Scene {
         val sorted = members.sortedBy { it.timeMs }
-        return Scene(sorted.first().id, sorted, pick(sorted, keep, taste).map { it.id }, keep)
+        val favorites = sorted.filter { it.favorite }.map { it.id }
+        val picks = pick(sorted, keep, taste).map { it.id }
+        return Scene(sorted.first().id, sorted, picks + favorites, picks.size, favorites)
     }
 
     /** 单张照片在场景里的质量分 0..1 */
@@ -107,6 +116,7 @@ object SceneDetector {
     }
 
     /** 挑 [k] 张：每次选“质量高、又和已选的不像”的那张；收藏的照片一律保留 */
+    /** 在没收藏的照片里挑 [k] 张：看“好”和“跟已挑的、收藏的不重复”（MMR） */
     fun pick(members: List<PhotoInfo>, k: Int, taste: Taste = Taste.NORMAL): List<PhotoInfo> {
         if (members.isEmpty()) return emptyList()
         val known = members.filter { it.aestheticKnown }.map { it.aesthetic!! }
@@ -115,15 +125,16 @@ object SceneDetector {
         val q = members.associate { it.id to quality(it, mean, std, taste) }
         val span = members.maxOf { it.timeMs } - members.minOf { it.timeMs }
 
+        // 收藏的已经留着了：不再挑它们，但挑的时候要避开和它们重复的画面
+        val favorites = members.filter { it.favorite }
+        val pool = members.filter { !it.favorite }
         val picked = ArrayList<PhotoInfo>()
-        members.filter { it.favorite }.forEach { picked.add(it) }
-        val target = max(k, picked.size)
-        while (picked.size < min(target, members.size)) {
+        while (picked.size < min(k, pool.size)) {
             var best: PhotoInfo? = null
             var bestScore = Float.NEGATIVE_INFINITY
-            for (m in members) {
+            for (m in pool) {
                 if (m in picked) continue
-                val redundancy = picked.maxOfOrNull { similarity(m, it, span) } ?: 0f
+                val redundancy = (picked + favorites).maxOfOrNull { similarity(m, it, span) } ?: 0f
                 val s = q.getValue(m.id) - LAMBDA * redundancy
                 if (s > bestScore) { bestScore = s; best = m }
             }

@@ -330,6 +330,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         push(Screen.Album(AlbumSession("好评", "设为好评的聊天截图都在这里，不会被建议删除。多选可以拼成一张长图，发朋友圈、做宣传都方便。", entries, praiseable = true)))
     }
 
+    /** 截图笔记里的一串截图：从早到晚排好，挑几张拼长图、整理文字、分享或删除 */
+    fun openShotSession(s: com.dtu.cleaner.core.ShotSession, title: String) {
+        val lib = library ?: return
+        val entries = s.ids.mapNotNull { lib.byId[it] }.sortedBy { it.timeMs }.map { GridEntry(it, false, emptyList()) }
+        push(Screen.Album(AlbumSession(title, "这一串截图从早到晚排好了。点开看大图，挑出要的几张再拼长图、整理成文字。", entries, praiseable = false, aspect = 0.5f, noteTitle = title)))
+    }
+
+    /** 把这几张截图里的字整理成一篇笔记（按时间先后，去掉状态栏、重复的行） */
+    fun noteOf(items: List<MediaItem>, title: String): String? {
+        val lib = library ?: return null
+        val pages = items.sortedBy { it.timeMs }.map { lib.shotTexts[it.id] ?: "" }
+        return if (pages.all { it.isBlank() }) null else com.dtu.cleaner.core.ScreenText.buildNote(title, pages)
+    }
+
     // ---------- 好评 ----------
 
     private val praisePrefs = application.getSharedPreferences("praise", android.content.Context.MODE_PRIVATE)
@@ -353,7 +367,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     /** 按拍摄时间从早到晚拼成长图（存进相册“轻了笔记”），然后弹出分享：微信、Get笔记、备忘录都能收 */
-    fun stitchAndShare(ctx: android.content.Context, items: List<MediaItem>, title: String, onDone: () -> Unit = {}) {
+    fun stitchAndShare(ctx: android.content.Context, items: List<MediaItem>, title: String, text: String? = null, onDone: () -> Unit = {}) {
         val pics = items.filter { !it.isVideo }.sortedBy { it.timeMs }
         if (pics.isEmpty() || stitching) return
         stitching = true
@@ -364,7 +378,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             stitching = false
             r.onSuccess { uris ->
                 snackbar.showSnackbar("已拼成 ${uris.size} 张长图，存在相册“轻了笔记”里")
-                com.dtu.cleaner.media.NoteMaker.shareImages(ctx, uris, null, "把长图发给…")
+                com.dtu.cleaner.media.NoteMaker.shareImages(ctx, uris, text, "把长图发给…")
                 onDone()
             }.onFailure { snackbar.showSnackbar("拼长图失败：${it.message}") }
         }
