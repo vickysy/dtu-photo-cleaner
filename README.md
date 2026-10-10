@@ -76,10 +76,32 @@
 
 能不能装：
 - 安卓 11 及以上：小米、OPPO、vivo、荣耀、一加等都可以
-- 华为鸿蒙 4 及以前可以；鸿蒙 5 及以上（纯血鸿蒙）、iPhone 不行
+- 华为鸿蒙 4 及以前可以；鸿蒙 5 及以上（纯血鸿蒙）不行
+- iPhone：有原生的 iPhone 版，还在测试，目前只能自己用 Xcode 装（见下面“iPhone 版（预览）”）
 - 目前只在荣耀 MagicOS 10（安卓 16）真机上完整测过，其他手机遇到问题欢迎反馈
 
 升级：下载新版本直接覆盖安装，分析结果和设置都会保留。
+
+## iPhone 版（预览）
+
+`ios/` 是原生的 iPhone 版（SwiftUI），判断规则从安卓版逐行移植过来，同样的测试图算出来的清晰度、画面指纹完全一致。目前只在一台 iPhone 14 Pro Max（iOS 18.7）上用真实相册测过。
+
+还没有 App Store、TestFlight 的下载链接，现在只能自己用 Mac 编译安装：
+
+- 需要：一台 Mac，装 Xcode 26（第一次还要在 Xcode → Settings → Components 下载 iOS 组件，约 8 GB）；iPhone 系统 iOS 18 或以上；一个 Apple ID（免费的就行）；能传数据的数据线。
+- 步骤：
+  1. Xcode → Settings → Accounts 登录 Apple ID。
+  2. 打开 `ios/QingleAlbum.xcodeproj`。把 `ios/Signing.example.xcconfig` 复制成 `ios/Signing.xcconfig`，填上自己的 Team ID（或者在 Signing & Capabilities 里选 Team）。这个文件不会提交到 git。
+  3. iPhone 用数据线连 Mac，点“信任此电脑”。在 Xcode 里选这台 iPhone，点运行。第一次会提示开发者模式没开：iPhone 上“设置 → 隐私与安全性 → 开发者模式”打开，重启后再运行一次。
+  4. 第一次打开提示“未受信任的开发者”时：“设置 → 通用 → VPN与设备管理”里信任自己的 Apple ID。
+- 用免费 Apple ID 装的 App 7 天后会打不开，要用 Xcode 再装一次（数据都在）。
+
+和安卓版的不同：
+- 删掉的照片在系统“照片”App 的“最近删除”里，App 没法替你清空，只能跳过去。
+- iOS 不告诉 App 一张图是哪个 App 存的，所以没有“App 存的图”按来源分，相机照片靠尺寸和比例判断。
+- 美感评分用的是 iOS 18 自带的图像美感评估，不是安卓版的 NIMA 模型；文字识别用 iOS 自带的识字。相机照片只识系统认为是“实用类”的（拍的文件、收据、白板）。
+- 还没有：充电时后台分析、每月提醒、设置里的各项阈值。
+- 开了“iCloud 照片”的，删除会同步删掉 iCloud 和其他设备上的这张。
 
 ## 隐私和安全
 
@@ -134,6 +156,7 @@ cd qingle-album
 | `.../ui/` | 各个界面（Jetpack Compose，仿 iOS 风格） |
 | `app/src/test/` | 单元测试 |
 | `website/` | 官网（纯静态页面），`deploy/` 是它的 nginx 配置 |
+| `ios/` | iPhone 版（SwiftUI）：`Core/` 判断规则（和安卓版同一套），`Data/` 读相册、分析、压缩、拼长图，`UI/` 各个界面 |
 
 ## 用到的开源组件
 

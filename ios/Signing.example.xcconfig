@@ -1,0 +1,4 @@
+// 自己编译到 iPhone 上：把这个文件复制成 Signing.xcconfig，填上自己的 Team ID
+// （Xcode → 设置 → Accounts 登录 Apple ID 后，在项目的 Signing & Capabilities 里能看到）。
+// Signing.xcconfig 不会提交到 git。
+DEVELOPMENT_TEAM = 

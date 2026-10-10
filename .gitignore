@@ -19,3 +19,5 @@ ios/build/
 
 # 本机预览配置
 .claude/
+ios/Signing.xcconfig
+ios/**/project.xcworkspace/xcuserdata/

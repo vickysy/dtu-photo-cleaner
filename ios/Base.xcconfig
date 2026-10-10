@@ -1,0 +1,2 @@
+// 轻了相册的公共编译设置。签名团队放在 Signing.xcconfig（不提交），没有这个文件也能编译（只是不能装到真机）
+#include? "Signing.xcconfig"
