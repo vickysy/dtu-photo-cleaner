@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import com.dtu.cleaner.App
@@ -94,10 +95,20 @@ class KeepAliveService : Service() {
         private var text = "…"
         private var done = 0
         private var total = 0
+        /** 锁屏后 CPU 会睡，前台服务本身不管这个：干活时拿着一个 CPU 唤醒锁（最多 6 小时，免得忘了放） */
+        private var wake: PowerManager.WakeLock? = null
 
         @Synchronized
         fun acquire(ctx: Context, tag: String) {
             holders.add(tag)
+            if (wake == null) {
+                wake = runCatching {
+                    ctx.getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "qingle:work").apply {
+                        setReferenceCounted(false)
+                        acquire(6 * 60 * 60 * 1000L)
+                    }
+                }.getOrNull()
+            }
             ensureChannel(ctx)
             try {
                 ctx.startForegroundService(Intent(ctx, KeepAliveService::class.java))
@@ -109,7 +120,11 @@ class KeepAliveService : Service() {
         @Synchronized
         fun release(ctx: Context, tag: String) {
             holders.remove(tag)
-            if (holders.isEmpty()) ctx.stopService(Intent(ctx, KeepAliveService::class.java))
+            if (holders.isEmpty()) {
+                wake?.let { if (it.isHeld) it.release() }
+                wake = null
+                ctx.stopService(Intent(ctx, KeepAliveService::class.java))
+            }
         }
 
         fun update(ctx: Context, title: String, text: String, done: Int, total: Int) {

@@ -39,6 +39,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +63,7 @@ import com.dtu.cleaner.analysis.Progress
 import com.dtu.cleaner.core.Similarity
 import com.dtu.cleaner.data.Library
 import com.dtu.cleaner.data.MediaItem
+import com.dtu.cleaner.util.BackgroundRun
 import com.dtu.cleaner.util.Fmt
 
 /**
@@ -446,15 +451,32 @@ private fun Reclaim(vm: MainViewModel, lib: Library, p: Progress, next: Category
 
 @Composable
 private fun Analyzing(vm: MainViewModel, p: Progress) {
-    Text(p.label, style = IosType.subhead, color = ios.secondary)
+    val ctx = LocalContext.current
+    // 允许后台运行：从系统设置回来时重新看一下
+    var allowed by remember { mutableStateOf(BackgroundRun.allowed(ctx)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { allowed = BackgroundRun.allowed(ctx) }
+    // 分好几步做，每步的数字都是“总共做好了多少”，被系统清掉再回来也是接着涨
+    Text(
+        if (p.step > 0) "第 ${p.step} 步，共 ${Progress.STEPS} 步 · ${p.label}" else p.label,
+        style = IosType.subhead, color = ios.secondary,
+    )
     Text(if (p.total > 0) "${(p.fraction * 100).toInt()}%" else "…", style = DisplayStyle, color = ios.label)
-    if (p.total > 0) Text("${Fmt.count(p.done)} / ${Fmt.count(p.total)}", style = IosType.subhead, color = ios.secondary)
+    if (p.total > 0) Text("已完成 ${Fmt.count(p.done)} / ${Fmt.count(p.total)}", style = IosType.subhead, color = ios.secondary)
     Spacer(Modifier.height(14.dp))
     IosProgress(p.fraction)
     Spacer(Modifier.height(8.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text("可以锁屏，进度会显示在通知栏。", style = IosType.footnote, color = ios.secondary, modifier = Modifier.weight(1f))
+        Text(
+            if (allowed) "可以锁屏、切到别的 App。分析好的随时存着，万一被系统清掉，回来会接着分析。"
+            else "分析好的随时存着，被系统清掉也不会丢，回来会接着分析。想切走时也一直跑，点“允许后台运行”。",
+            style = IosType.footnote, color = ios.secondary, modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(12.dp))
         TextAction("暂停", { vm.pauseAnalysis() }, style = IosType.subhead)
+    }
+    if (!allowed) {
+        Spacer(Modifier.height(10.dp))
+        FilledButton("允许后台运行", { BackgroundRun.request(ctx) }, Modifier.fillMaxWidth(), height = 44.dp)
     }
 }
 

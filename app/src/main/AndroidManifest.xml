@@ -14,6 +14,9 @@
     <!-- 分析时在通知栏显示进度，避免被系统杀掉 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- 锁屏时让分析接着跑（CPU 唤醒锁）；请用户允许“后台运行”（不受省电优化限制） -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 不要联网权限：ML Kit 会自带一个（用来给 Google 发使用统计），这里去掉。人脸检测是离线模型，不受影响 -->
     <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />

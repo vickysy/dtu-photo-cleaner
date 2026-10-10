@@ -61,6 +61,14 @@ data class Progress(
     val running: Boolean get() = phase != Phase.IDLE && phase != Phase.DONE && phase != Phase.FAILED
     val fraction: Float get() = if (total <= 0) 0f else done.toFloat() / total
 
+    /** 第几步（共 [STEPS] 步）；读取相册和完成时是 0 */
+    val step: Int get() = STEP_PHASES.indexOf(phase) + 1
+
+    companion object {
+        private val STEP_PHASES = listOf(Phase.FEATURES, Phase.FACES, Phase.GEO, Phase.TEXT, Phase.VIDEOS, Phase.TEXT_ALL)
+        val STEPS = STEP_PHASES.size
+    }
+
     /** 界面上显示的这一步在做什么 */
     val label: String get() = when (phase) {
         Phase.SCANNING -> "正在读取相册"
@@ -100,14 +108,17 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
             st == null || st.modified != m.modified || st.size != m.size || st.version != LibraryBuilder.FEATURE_VERSION
         } // 已按拍摄时间倒序：先分析最近的照片
 
+        // 进度都算“总共做好了多少”：上次已经分析好的（存在数据库里）也算上，
+        // 中途被系统清掉、下次接着做时，数字接着涨，不会看起来像从 0 开始
+        val featBase = images.count { LibraryBuilder.eligibleForAnalysis(it) } - todo.size
         var done = 0
-        onProgress(Progress(Phase.FEATURES, 0, todo.size))
+        onProgress(Progress(Phase.FEATURES, featBase, featBase + todo.size))
         for (chunk in todo.chunked(48)) {
             ensureActive()
             val results = chunk.map { m -> async(decodeDispatcher) { m to features(m) } }.awaitAll()
             db.putFeatures(results, LibraryBuilder.FEATURE_VERSION)
             done += chunk.size
-            onProgress(Progress(Phase.FEATURES, done, todo.size))
+            onProgress(Progress(Phase.FEATURES, featBase + done, featBase + todo.size))
         }
 
         // 第二步：只对会被分到组里的照片做人脸检测和美感评分（还没做过的）
@@ -134,7 +145,8 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
         val needAes = candidates.filter { it.aesthetic == null }.map { it.id }.toHashSet()
         val work = candidates.filter { it.id in needFaces || it.id in needAes }.mapNotNull { byId[it.id] }
         if (work.isNotEmpty()) {
-            onProgress(Progress(Phase.FACES, 0, work.size))
+            val faceBase = candidates.size - work.size
+            onProgress(Progress(Phase.FACES, faceBase, candidates.size))
             val detector = FaceDetection.getClient(
                 FaceDetectorOptions.Builder()
                     .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
@@ -162,7 +174,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
                     db.putFaces(rows.mapNotNull { (id, face, _) -> face?.let { id to it } })
                     db.putAesthetic(rows.mapNotNull { (id, _, aes) -> aes?.let { id to it } })
                     fd += chunk.size
-                    onProgress(Progress(Phase.FACES, fd, work.size))
+                    onProgress(Progress(Phase.FACES, faceBase + fd, candidates.size))
                 }
             } finally {
                 detector.close()
@@ -172,16 +184,18 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
 
         // 第三步：拍摄地点（要“读取照片位置”权限；没有就跳过）
         if (ctx.checkSelfPermission(Manifest.permission.ACCESS_MEDIA_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            val needGeo = images.filter { it.id in cameraIds && stored[it.id]?.let { s -> s.features != null && !s.geoRead } == true }
+            val withFeatures = images.filter { it.id in cameraIds && stored[it.id]?.features != null }
+            val needGeo = withFeatures.filter { stored[it.id]?.geoRead != true }
             if (needGeo.isNotEmpty()) {
-                onProgress(Progress(Phase.GEO, 0, needGeo.size))
+                val geoBase = withFeatures.size - needGeo.size
+                onProgress(Progress(Phase.GEO, geoBase, withFeatures.size))
                 var gd = 0
                 for (chunk in needGeo.chunked(64)) {
                     ensureActive()
                     val rows = chunk.map { m -> async(decodeDispatcher) { m.id to readLocation(m) } }.awaitAll()
                     db.putGeo(rows)
                     gd += chunk.size
-                    onProgress(Progress(Phase.GEO, gd, needGeo.size))
+                    onProgress(Progress(Phase.GEO, geoBase + gd, withFeatures.size))
                 }
             }
         }
@@ -189,19 +203,19 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
         // 第四步：识字。截图全部识（分类、整理笔记），照片只识“角度不同”组里的（区分不同页的文件）
         val texts = db.loadTexts()
         fun needText(m: MediaItem) = texts[m.id].let { it == null || it.modified != m.modified || it.version != textVersion(m) }
-        val shots = images.filter { it.isScreenshot && it.mime != "image/gif" && needText(it) }
         val docIds = looseGroups.filter { g -> !Ranker.rank(g, 1).nearIdentical }.flatten().map { it.id }.toHashSet()
-        val docs = images.filter { it.id in docIds && needText(it) }
-        val textWork = shots + docs
-        recognizeText(textWork, Phase.TEXT, onProgress)
+        val textAll = images.filter { (it.isScreenshot && it.mime != "image/gif") || it.id in docIds }
+        val textWork = textAll.filter { needText(it) }
+        recognizeText(textWork, Phase.TEXT, textAll.size - textWork.size, onProgress)
 
         // 第五步：视频抽帧（录屏不看）
         val vstored = db.loadVideos()
         val vtodo = videos.filter { m ->
             !m.isScreenshot && vstored[m.id].let { it == null || it.modified != m.modified || it.size != m.size || it.version != VIDEO_VERSION }
         }
+        val vBase = videos.count { !it.isScreenshot } - vtodo.size
         if (vtodo.isNotEmpty()) {
-            onProgress(Progress(Phase.VIDEOS, 0, vtodo.size))
+            onProgress(Progress(Phase.VIDEOS, vBase, vBase + vtodo.size))
             // 中间那帧打美感分（视频场景精选挑精华用）；模型不是线程安全的，打分时排队
             val scorer = runCatching { AestheticScorer.create(ctx) }.getOrNull()
             try {
@@ -211,7 +225,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
                     val rows = chunk.map { m -> async(videoDispatcher) { Triple(m, videoFeatures(m, scorer), VIDEO_VERSION) } }.awaitAll()
                     db.putVideos(rows)
                     vd += chunk.size
-                    onProgress(Progress(Phase.VIDEOS, vd, vtodo.size))
+                    onProgress(Progress(Phase.VIDEOS, vBase + vd, vBase + vtodo.size))
                 }
             } finally {
                 scorer?.close()
@@ -219,11 +233,9 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
         }
         // 第六步：其余的照片也识字（找拍的证件、文件、票据）。最费时间，放在最后，充电时慢慢跑
         val texts2 = db.loadTexts()
-        val rest = images.filter { m ->
-            m.mime != "image/gif" && (m.maxSide == 0 || m.maxSide >= 400) &&
-                texts2[m.id].let { it == null || it.modified != m.modified || it.version != textVersion(m) }
-        }
-        recognizeText(rest, Phase.TEXT_ALL, onProgress)
+        val readable = images.filter { m -> m.mime != "image/gif" && (m.maxSide == 0 || m.maxSide >= 400) }
+        val rest = readable.filter { m -> texts2[m.id].let { it == null || it.modified != m.modified || it.version != textVersion(m) } }
+        recognizeText(rest, Phase.TEXT_ALL, readable.size - rest.size, onProgress)
 
         onProgress(Progress(Phase.DONE, done, todo.size, finishedAt = System.currentTimeMillis()))
     }
@@ -232,9 +244,9 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
      * 识字 + 二维码（截图和 App 存的图才扫二维码），记下字块排布（认聊天记录）。
      * 证件里的长串数字打码后再存。
      */
-    private suspend fun recognizeText(work: List<MediaItem>, phase: Phase, onProgress: (Progress) -> Unit) = coroutineScope {
+    private suspend fun recognizeText(work: List<MediaItem>, phase: Phase, base: Int, onProgress: (Progress) -> Unit) = coroutineScope {
         if (work.isEmpty()) return@coroutineScope
-        onProgress(Progress(phase, 0, work.size))
+        onProgress(Progress(phase, base, base + work.size))
         val recognizer = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
         val barcodes = BarcodeScanning.getClient()
         try {
@@ -257,7 +269,7 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
                 }.awaitAll()
                 db.putTexts(rows) { textVersion(it) }
                 td += chunk.size
-                onProgress(Progress(phase, td, work.size))
+                onProgress(Progress(phase, base + td, base + work.size))
             }
         } finally {
             recognizer.close()

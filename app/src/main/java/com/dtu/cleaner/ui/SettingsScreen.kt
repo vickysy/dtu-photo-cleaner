@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dtu.cleaner.BuildConfig
+import com.dtu.cleaner.util.BackgroundRun
 
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
@@ -31,6 +32,9 @@ fun SettingsScreen(vm: MainViewModel) {
     var askReanalyze by remember { mutableStateOf(false) }
     var askReport by remember { mutableStateOf(false) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    // 允许后台运行：从系统设置回来时重新看一下
+    var bgAllowed by remember { mutableStateOf(BackgroundRun.allowed(ctx)) }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) { bgAllowed = BackgroundRun.allowed(ctx) }
     val list = rememberLazyListState()
     val collapsed by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 70 } }
     BackHandler { vm.back() }
@@ -87,8 +91,15 @@ fun SettingsScreen(vm: MainViewModel) {
             item {
                 InsetGroup(
                     header = "自动整理",
-                    footer = "手机的省电设置可能拦住后台任务。没跑也没关系，打开 App 时会接着分析。",
+                    footer = "小米、荣耀、华为等手机切到别的 App 一会儿就会清掉后台任务。允许后台运行后，分析就不会中断；" +
+                        "小米手机还要在 设置 → 应用设置 → 应用管理 → 轻了相册 → 省电策略 里选“无限制”。没跑也没关系，分析好的都存着，打开 App 会接着分析。",
                 ) {
+                    IosRow(
+                        "后台运行",
+                        subtitle = if (bgAllowed) "已允许，切到别的 App 也会接着分析" else "没允许：切走一会儿可能被系统清掉",
+                        value = if (bgAllowed) "已允许" else "去允许",
+                        onClick = if (bgAllowed) null else ({ BackgroundRun.request(ctx) }),
+                    )
                     IosSwitchRow("充电时分析新照片", "每天找个充电的时候，把新拍的照片分析好", st.autoAnalyze) { v ->
                         vm.updateSettings { it.copy(autoAnalyze = v) }
                     }
