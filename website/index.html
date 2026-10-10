@@ -218,6 +218,16 @@ details p{color:var(--sub);margin-top:10px;font-size:15px}
 .history a{display:block}
 .history img{width:100%;border-radius:12px}
 .history figcaption{font-size:14px;color:var(--faint);text-align:center;margin-top:10px}
+/* 跟木妈学做 App */
+.learn{margin-top:16px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;background:linear-gradient(135deg,#2fc4a0,#119c7e);color:#fff;border-radius:var(--radius);padding:28px 30px}
+.learn .k{font-size:13px;font-weight:600;color:#fff4cc;letter-spacing:.04em}
+.learn h3{font-size:24px;line-height:1.4;margin:6px 0 8px}
+.learn p{font-size:15px;line-height:1.75;color:rgba(255,255,255,.92)}
+.learn .acts2{display:flex;flex-direction:column;gap:10px}
+.learn .btn{height:46px;padding:0 22px;font-size:16px;white-space:nowrap}
+.learn .btn.y{background:var(--yellow);color:var(--ink);box-shadow:0 6px 16px rgba(0,0,0,.12)}
+.learn .btn.w{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.5)}
+@media (max-width:760px){.learn{grid-template-columns:1fr;padding:24px}.learn .acts2{flex-direction:row;flex-wrap:wrap}}
 /* 作者的书和官网 */
 .more{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;margin-top:16px}
 .book{display:grid;grid-template-columns:150px 1fr;gap:22px;align-items:center;background:#fcf5eb;border:1px solid #efe4d2;border-radius:var(--radius);padding:24px}
@@ -260,6 +270,7 @@ footer .r{margin-left:auto}
     <nav>
       <a class="opt" href="#features">功能</a>
       <a class="opt" href="#name">名字</a>
+      <a class="opt" href="#learn">跟木妈学</a>
       <a href="#install">安装</a>
       <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub</a>
     </nav>
@@ -531,6 +542,17 @@ footer .r{margin-left:auto}
       <a href="img/history-large.jpg" target="_blank" rel="noopener"><img src="img/history.jpg" alt="轻了相册改版记录：名字从 D图 到轻了相册，logo、配色、定位的变化，以及 36 小时 27 个版本的时间线" width="1920" height="1080" loading="lazy"></a>
       <figcaption>改版记录：36 小时、27 个版本，从“删除图”到“管理图”。点图看大图</figcaption>
     </figure>
+    <div class="learn" id="learn">
+      <div>
+        <p class="k">跟木妈学做 App</p>
+        <h3>想把你的痛点，也做成一个 App？</h3>
+        <p>轻了相册就是这样做出来的：从一个真实问题出发，36 小时、27 个版本。木妈的 AI 系统课里有一整节“产品创造”，带你把自己的想法做成一个别人能用的小产品。</p>
+      </div>
+      <div class="acts2">
+        <a class="btn y" href="https://mumaaidea.com/class/courses.html" target="_blank" rel="noopener">看看木妈的 AI 课</a>
+        <a class="btn w" href="https://mumaaidea.com/class/courses.html#contact" target="_blank" rel="noopener">咨询木妈</a>
+      </div>
+    </div>
     <div class="more">
       <div class="book">
         <img src="img/book.jpg" alt="《用好AI，轻松养出爱思考会学习的孩子》封面" width="480" height="637" loading="lazy">
