@@ -122,14 +122,13 @@ section{padding:56px 0}
 .ill-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
 .ill-foot span{color:var(--sub)}
 .btn-del{background:#ef5b4c;color:#fff;border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px}
-.cats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.cat{background:var(--card);border-radius:14px;padding:12px}
-.cat i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;margin-bottom:8px}
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cat{background:var(--card);border-radius:14px;padding:12px 4px 10px;text-align:center}
+.cat i{display:grid;place-items:center;width:36px;height:36px;border-radius:11px;margin:0 auto 6px}
 .cat i svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.cat b{display:block;font-size:14px}
-.cat small{color:var(--faint);font-size:12px}
-.acts{display:flex;gap:6px;margin-top:12px}
-.acts span{flex:1;text-align:center;background:var(--green-soft);color:var(--green-ink);border-radius:10px;padding:7px 0;font-weight:600}
+.cat b{display:block;font-size:12px;font-weight:600;white-space:nowrap}
+.acts{display:flex;gap:6px;margin-top:10px}
+.acts span{flex:1;text-align:center;background:var(--green-soft);color:var(--green-ink);border-radius:10px;padding:6px 0;font-weight:600;font-size:12px;white-space:nowrap}
 .acts span.d{background:#fdeceb;color:#d8483a}
 .vid{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:10px}
 .vid .th{position:relative;flex:none;width:64px;height:64px;border-radius:10px;background:linear-gradient(160deg,#a9d6f0,#4f8fbf 60%,#3b6f97)}
@@ -187,6 +186,15 @@ section{padding:56px 0}
 .prompt{margin-top:14px;background:var(--card);border:1px dashed #cfd3d9;border-radius:14px;padding:14px 16px;font-size:14px;color:var(--ink);line-height:1.7;word-break:break-all}
 .copy{margin-top:10px;height:40px;padding:0 16px;font-size:15px}
 .step .btn.primary{margin-top:16px}
+.ios{margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px;position:relative}
+.ios .badge{display:inline-block;margin-bottom:8px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:2px 10px;color:var(--sub)}
+.ios h3{font-size:20px;margin-bottom:8px}
+.ios>p{color:var(--sub);font-size:15px}
+.ios .cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
+.ios h4{margin:0 0 6px;font-size:15px}
+.ios ul,.ios ol{margin:0;padding-left:20px;color:var(--sub);font-size:14px}
+.ios li{margin-top:4px}
+@media (max-width:760px){.ios .cols{grid-template-columns:1fr}}
 .tips{margin-top:16px;color:var(--sub);font-size:14px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 22px}
 .tips b{color:var(--ink)}
 .tips p+p{margin-top:6px}
@@ -344,8 +352,8 @@ footer .r{margin-left:auto}
       </div>
       <figure class="shot"><div class="ill" role="img" aria-label="示意图：分类相册，好评、证件、聊天记录、文章与文件、票据行程、订单物流">
         <div class="ill-top"><div><b>分类相册</b><small>按图里的字自动分好</small></div></div>
-        <div class="cats"><div class="cat"><i style="background:#f6cc45"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg></i><b>好评</b><small>客户的夸奖</small></div><div class="cat"><i style="background:#2fc4a0"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 15.5c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2M14 10h4M14 13.5h3"/></svg></i><b>证件</b><small>身份证、银行卡</small></div><div class="cat"><i style="background:#5cbf7a"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M8 9h8M8 12h5"/></svg></i><b>聊天记录</b><small>微信聊天截图</small></div><div class="cat"><i style="background:#4a9be0"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h6"/></svg></i><b>文章与文件</b><small>长文、课件</small></div><div class="cat"><i style="background:#f08a5d"><svg viewBox="0 0 24 24"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg></i><b>票据行程</b><small>车票、发票</small></div><div class="cat"><i style="background:#9b8cf2"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></i><b>订单物流</b><small>订单、快递</small></div></div>
-        <div class="acts"><span>拼长图</span><span>分享</span><span>设为好评</span><span class="d">删除</span></div>
+        <div class="cats"><div class="cat"><i style="background:#f6cc45"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg></i><b>好评</b></div><div class="cat"><i style="background:#2fc4a0"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 15.5c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2M14 10h4M14 13.5h3"/></svg></i><b>证件</b></div><div class="cat"><i style="background:#5cbf7a"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M8 9h8M8 12h5"/></svg></i><b>聊天记录</b></div><div class="cat"><i style="background:#4a9be0"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h6"/></svg></i><b>文章与文件</b></div><div class="cat"><i style="background:#f08a5d"><svg viewBox="0 0 24 24"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg></i><b>票据行程</b></div><div class="cat"><i style="background:#9b8cf2"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></i><b>订单物流</b></div></div>
+        <div class="acts"><span>拼长图</span><span>分享</span><span>好评</span><span class="d">删除</span></div>
       </div><figcaption>示意图</figcaption></figure>
     </div>
 
@@ -412,7 +420,7 @@ footer .r{margin-left:auto}
     <div class="sec-head">
       <p class="k">安装</p>
       <h2>两种装法，选一种</h2>
-      <p>支持安卓 11 及以上：小米、OPPO、vivo、荣耀、一加等都可以，国行手机不需要 Google 服务。</p>
+      <p>支持安卓 11 及以上：小米、OPPO、vivo、荣耀、一加等都可以，国行手机不需要 Google 服务。iPhone 版还在测试，装法见下面。</p>
     </div>
     <div class="steps">
       <div class="step">
@@ -437,6 +445,31 @@ footer .r{margin-left:auto}
         <p class="meta">也可以去 <a href="https://github.com/vickysy/qingle-album/releases/latest" target="_blank" rel="noopener" style="color:var(--green-ink)">GitHub Releases</a> 下载。</p>
       </div>
     </div>
+    <div class="ios" id="iphone">
+      <span class="badge">测试中</span>
+      <h3>iPhone 版：有 Mac 就能先装</h3>
+      <p>iPhone 版还没上架 App Store，暂时不能直接下载。如果你有一台 Mac，可以从源码自己装，也可以交给 AI 帮你装。</p>
+      <div class="cols">
+        <div>
+          <h4>需要准备</h4>
+          <ul>
+            <li>一台 Mac，装好 Xcode 26（第一次要在 Xcode 设置里下载 iOS 组件，约 8 GB）</li>
+            <li>iPhone，系统 iOS 18 或以上</li>
+            <li>一个 Apple ID（免费的就行，但 7 天后要重新装一次）</li>
+            <li>一根能传数据的线</li>
+          </ul>
+        </div>
+        <div>
+          <h4>怎么装</h4>
+          <ol>
+            <li>iPhone 连上 Mac，手机上点“信任此电脑”。</li>
+            <li>把这段话发给 Mac 上的 AI 助手：“帮我把 https://github.com/vickysy/qingle-album 里的 iPhone 版装到我连着的 iPhone 上。”</li>
+            <li>手机上打开“开发者模式”，再到“设置 → 通用 → VPN与设备管理”里信任开发者。</li>
+          </ol>
+        </div>
+      </div>
+      <p style="margin-top:14px">iPhone 版的美感打分用的是苹果系统自带的评估；开着 iCloud 照片时，删除会同步删掉 iCloud 和其他设备上的这张照片。详细步骤见 <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener" style="color:var(--green-ink)">GitHub</a>。</p>
+    </div>
     <div class="tips">
       <p><b>华为、荣耀</b>：开着“纯净模式”时安装会被拦住，先暂时关掉；用数据线装时，USB 用途选“仅充电”，并打开“仅充电模式下允许 ADB 调试”，手机要解锁亮屏。</p>
       <p><b>微信转发的安装包</b>：文件名结尾可能多出“.1”，在文件管理里把“.1”删掉再装。</p>
@@ -451,7 +484,7 @@ footer .r{margin-left:auto}
       <p class="k">常见问题</p>
       <h2>你可能想问</h2>
     </div>
-    <details><summary>iPhone、纯血鸿蒙能用吗？</summary><p>现在能下载的只有安卓版。iPhone 版还在测试，暂时不能下载，页面上有几张截图来自 iPhone 测试版。华为鸿蒙 4 及以前的手机可以装安卓版，鸿蒙 5 及以上（纯血鸿蒙）暂时用不了。</p></details>
+    <details><summary>iPhone、纯血鸿蒙能用吗？</summary><p>iPhone 版还在测试，没上架 App Store，暂时不能直接下载；有 Mac 的可以照<a href="#iphone" style="color:var(--green-ink)">上面的方法</a>自己装。页面上有两张截图来自 iPhone 版。华为鸿蒙 4 及以前的手机可以装安卓版，鸿蒙 5 及以上（纯血鸿蒙）暂时用不了。</p></details>
     <details><summary>真的不会把照片传出去吗？</summary><p>不会。它没有联网权限，你可以在手机“设置 → 应用 → 轻了相册 → 权限”里自己确认。代码也全部公开在 GitHub 上，谁都可以检查。</p></details>
     <details><summary>开了云相册同步，删除会影响云端吗？</summary><p>可能会。开了云相册同步的，手机上删除后云端也可能跟着删。清理前建议先备份重要照片。</p></details>
     <details><summary>它判断得准吗？</summary><p>都是规则和小模型的判断，会有错，所以它只负责推荐。只有很确定的废片才默认勾选；拿不准的只标出来，删不删由你决定。</p></details>
@@ -504,7 +537,7 @@ footer .r{margin-left:auto}
   Array.prototype.forEach.call(document.querySelectorAll('a.dl'),function(a){
     a.addEventListener('click',function(e){
       if(inApp){e.preventDefault();wx.classList.add('on')}
-      else if(/iPhone|iPad|iPod/i.test(ua)){e.preventDefault();toast('现在只有安卓版，iPhone 暂时用不了')}
+      else if(/iPhone|iPad|iPod/i.test(ua)){e.preventDefault();toast('这是安卓安装包，iPhone 版的装法在下面');var t=document.getElementById('iphone');if(t)setTimeout(function(){t.scrollIntoView({behavior:'smooth'})},600)}
     });
   });
   wx.addEventListener('click',function(){wx.classList.remove('on')});
