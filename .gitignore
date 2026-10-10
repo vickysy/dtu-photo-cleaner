@@ -16,3 +16,6 @@ ios/**/xcuserdata/
 ios/build/
 *.xcresult
 .DS_Store
+
+# 本机预览配置
+.claude/

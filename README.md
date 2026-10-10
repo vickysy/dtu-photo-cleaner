@@ -12,7 +12,8 @@
 
 > 这个 App 的作者不会写代码。手机总是满，于是用 AI（Claude Code）边聊边做，一天做出第一版，又在朋友们的反馈里一路改到现在。
 
-- 下载：[Releases 页面](../../releases/latest)（APK，约 48 MB）
+- 官网：[qingle.nativeailab.cn](https://qingle.nativeailab.cn)（国内下载快）
+- 下载：[官网](https://qingle.nativeailab.cn) 或 [Releases 页面](../../releases/latest)（APK，约 48 MB）
 - 适用：安卓 11 及以上。国行手机没有 Google 服务也能用
 - 免费，不用注册，没有广告
 
@@ -68,7 +69,7 @@
 
 ## 安装
 
-1. 从 [Releases](../../releases/latest) 下载 APK，在手机上点开安装。
+1. 用手机浏览器打开 [官网](https://qingle.nativeailab.cn) 或 [Releases](../../releases/latest) 下载 APK，在手机上点开安装。微信里打不开下载的话，点右上角选“在浏览器打开”。
 2. 手机提示“未知来源”或“外部来源应用”时，允许这一次安装。华为、荣耀手机如果开着“纯净模式”，安装被拦住时先暂时关掉。
 3. 用微信发安装包时，对方收到的文件名结尾可能多出“.1”（比如 `xxx.apk.1`），在文件管理里把 `.1` 删掉再安装。
 4. 打开后允许访问照片时选“全部允许”。第一次分析几千张两三分钟、几万张十几分钟，建议边充电边等。
@@ -132,6 +133,7 @@ cd qingle-album
 | `.../data/` | 读相册（MediaStore）、本地数据库、设置、整理结果 |
 | `.../ui/` | 各个界面（Jetpack Compose，仿 iOS 风格） |
 | `app/src/test/` | 单元测试 |
+| `website/` | 官网（纯静态页面），`deploy/` 是它的 nginx 配置 |
 
 ## 用到的开源组件
 

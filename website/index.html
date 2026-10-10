@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>轻了相册 · 拍很多，留几张</title>
+<meta name="description" content="轻了相册：AI 帮你挑照片的安卓相册。场景精选、相似照片、废片、视频压缩、分类相册，全部在手机上离线完成，照片不出手机。免费开源。">
+<meta itemprop="name" content="轻了相册 · 拍很多，留几张">
+<meta itemprop="image" content="img/logo-512.png">
+<meta property="og:title" content="轻了相册 · 拍很多，留几张">
+<meta property="og:description" content="AI 帮你挑照片的安卓相册，照片不出手机，免费开源。">
+<meta property="og:image" content="img/logo-512.png">
+<link rel="icon" href="img/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="img/logo-512.png">
+<style>
+:root{
+  --bg:#fff; --ink:#1d2129; --sub:#5c6370; --faint:#8a909a; --line:#e6e8eb; --card:#f7f8fa;
+  --green:#2fc4a0; --green-ink:#119c7e; --green-soft:#e8f8f3; --yellow:#f6cc45; --yellow-soft:#fff4cc;
+  --radius:20px; --max:1080px;
+  font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  color:var(--ink); background:var(--bg);
+  -webkit-text-size-adjust:100%;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg)}
+a{color:inherit;text-decoration:none}
+img{display:block;max-width:100%}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+mark{background:linear-gradient(transparent 58%,var(--yellow) 58%,var(--yellow) 90%,transparent 90%);color:inherit;padding:0 2px}
+
+/* 顶栏 */
+header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.9);backdrop-filter:saturate(1.6) blur(12px);-webkit-backdrop-filter:saturate(1.6) blur(12px);border-bottom:1px solid transparent;transition:border-color .2s}
+header.scrolled{border-bottom-color:var(--line)}
+.bar{display:flex;align-items:center;gap:12px;height:60px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.brand img{width:32px;height:32px}
+.bar nav{margin-left:auto;display:flex;gap:22px;font-size:15px;color:var(--sub)}
+.bar nav a:hover{color:var(--ink)}
+@media (max-width:640px){.bar nav .opt{display:none}}
+
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 26px;border-radius:999px;font-size:17px;font-weight:600;cursor:pointer;border:0;transition:transform .15s,box-shadow .15s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--green);color:#fff;box-shadow:0 6px 18px rgba(47,196,160,.32)}
+.btn.primary:hover{box-shadow:0 8px 24px rgba(47,196,160,.42)}
+.btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn svg{width:20px;height:20px}
+
+/* 首屏 */
+.hero{padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
+.eyebrow{display:inline-block;font-size:14px;font-weight:600;color:var(--green-ink);background:var(--green-soft);border-radius:999px;padding:4px 12px;margin-bottom:18px}
+.hero h1{font-size:clamp(40px,7vw,64px);line-height:1.15;letter-spacing:.01em;font-weight:800}
+.hero .lead{font-size:clamp(17px,2.2vw,19px);color:var(--sub);margin:20px 0 28px;max-width:34em}
+.cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.meta{margin-top:14px;font-size:14px;color:var(--faint)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:28px;max-width:460px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:13px;color:var(--sub);line-height:1.5}
+.stat b{display:block;font-size:20px;color:var(--ink);line-height:1.3;white-space:nowrap}
+.phone{position:relative;justify-self:center;width:min(100%,320px)}
+.phone img{border-radius:34px;border:1px solid var(--line);box-shadow:0 30px 60px -20px rgba(29,33,41,.25)}
+.phone .tag{position:absolute;left:-18px;bottom:64px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-size:13px;box-shadow:0 10px 24px rgba(29,33,41,.12)}
+.phone .tag b{color:var(--green-ink)}
+@media (max-width:860px){
+  .hero{padding:32px 0 24px}
+  .hero .wrap{grid-template-columns:1fr;gap:36px}
+  .phone{width:min(78%,300px)}
+  .phone .tag{left:-10px}
+}
+
+/* 区块 */
+section{padding:56px 0}
+.sec-head{max-width:40em;margin-bottom:32px}
+.sec-head .k{font-size:14px;font-weight:600;color:var(--green-ink);letter-spacing:.05em}
+.sec-head h2{font-size:clamp(28px,4.4vw,38px);line-height:1.3;margin-top:6px;font-weight:800}
+.sec-head p{color:var(--sub);margin-top:12px;font-size:17px}
+.alt{background:var(--card)}
+
+/* 三个承诺 */
+.promises{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.promise{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+.promise .ic{width:44px;height:44px;border-radius:12px;background:var(--green-soft);display:grid;place-items:center;margin-bottom:14px}
+.promise .ic svg{width:24px;height:24px;stroke:var(--green-ink)}
+.promise h3{font-size:19px;margin-bottom:6px}
+.promise p{color:var(--sub);font-size:15px}
+@media (max-width:760px){.promises{grid-template-columns:1fr}}
+
+/* 主要功能：左右交替 */
+.feature{display:grid;grid-template-columns:1fr 300px;gap:56px;align-items:center;padding:28px 0}
+.feature:nth-child(odd){grid-template-columns:300px 1fr}
+.feature:nth-child(odd) .shot{order:-1}
+.feature .num{font-size:14px;font-weight:700;color:var(--green-ink)}
+.feature h3{font-size:clamp(24px,3.4vw,30px);line-height:1.35;margin:6px 0 12px}
+.feature p{color:var(--sub);font-size:17px}
+.feature ul{margin:14px 0 0;padding:0;list-style:none;color:var(--sub);font-size:15px}
+.feature li{position:relative;padding-left:20px;margin-top:6px}
+.feature li::before{content:"";position:absolute;left:2px;top:.65em;width:8px;height:8px;border-radius:2px;background:var(--green)}
+.shot img{border-radius:28px;border:1px solid var(--line);box-shadow:0 24px 48px -24px rgba(29,33,41,.28);width:100%}
+.shot figcaption{font-size:13px;color:var(--faint);text-align:center;margin-top:10px}
+@media (max-width:760px){
+  .feature,.feature:nth-child(odd){grid-template-columns:1fr;gap:20px}
+  .feature:nth-child(odd) .shot{order:0}
+  .shot{width:min(78%,280px);margin:0 auto}
+}
+
+/* 更多功能小卡片 */
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mini{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+.mini h4{margin:0 0 4px;font-size:16px}
+.mini p{color:var(--sub);font-size:14px;line-height:1.6}
+@media (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:420px){.grid{grid-template-columns:1fr}}
+
+/* 名字 */
+.name{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px}
+.word{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+.word .big{font-size:44px;font-weight:800;line-height:1.1}
+.word .py{font-size:14px;color:var(--faint);margin:6px 0 10px}
+.word p{color:var(--sub)}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 22px;font-size:16px}
+.flow span{background:var(--card);border-radius:999px;padding:4px 12px}
+.flow span.hl{background:var(--yellow-soft)}
+.flow i{font-style:normal;color:var(--faint)}
+.design{display:grid;grid-template-columns:120px 1fr;gap:24px;align-items:center;margin-top:16px;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+.design img{width:120px;height:120px}
+.design p{color:var(--sub)}
+.design p+p{margin-top:8px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin:0 2px 0 4px}
+@media (max-width:640px){.name{grid-template-columns:1fr}.design{grid-template-columns:1fr}.design img{width:88px;height:88px}}
+
+/* 安装 */
+.steps{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.step{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px;position:relative}
+.step .badge{position:absolute;top:22px;right:22px;font-size:12px;font-weight:600;background:var(--yellow-soft);border-radius:999px;padding:2px 10px}
+.step h3{font-size:20px;margin-bottom:10px}
+.step ol{margin:0;padding-left:20px;color:var(--sub);font-size:15px}
+.step li{margin-top:6px}
+.prompt{margin-top:14px;background:var(--card);border:1px dashed #cfd3d9;border-radius:14px;padding:14px 16px;font-size:14px;color:var(--ink);line-height:1.7;word-break:break-all}
+.copy{margin-top:10px;height:40px;padding:0 16px;font-size:15px}
+.step .btn.primary{margin-top:16px}
+.tips{margin-top:16px;color:var(--sub);font-size:14px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 22px}
+.tips b{color:var(--ink)}
+.tips p+p{margin-top:6px}
+@media (max-width:760px){.steps{grid-template-columns:1fr}}
+
+/* 问答 */
+details{border-bottom:1px solid var(--line);padding:16px 0}
+summary{cursor:pointer;font-weight:600;font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";color:var(--faint);font-weight:400;font-size:22px;line-height:1}
+details[open] summary::after{content:"−"}
+details p{color:var(--sub);margin-top:10px;font-size:15px}
+
+/* 作者 */
+.story{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:28px;font-size:17px;color:var(--sub)}
+.story p+p{margin-top:12px}
+.story b{color:var(--ink)}
+
+footer{border-top:1px solid var(--line);padding:28px 0 40px;font-size:14px;color:var(--faint)}
+footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
+footer a:hover{color:var(--ink)}
+footer .r{margin-left:auto}
+@media (max-width:640px){footer .r{margin-left:0}}
+
+/* 微信里不能直接下载 apk，提示去浏览器打开 */
+.wx{position:fixed;inset:0;z-index:50;background:rgba(17,20,26,.82);color:#fff;display:none;padding:24px;text-align:right}
+.wx.on{display:block}
+.wx svg{width:80px;height:80px;margin:0 6px 0 auto;display:block}
+.wx p{font-size:19px;line-height:1.7;margin-top:8px;text-align:right}
+.wx b{color:var(--yellow)}
+.toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:15px;border-radius:999px;padding:10px 18px;opacity:0;transition:.2s;pointer-events:none;z-index:60}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header id="top">
+  <div class="wrap bar">
+    <a class="brand" href="#"><img src="img/logo.svg" alt="">轻了相册</a>
+    <nav>
+      <a class="opt" href="#features">功能</a>
+      <a class="opt" href="#name">名字</a>
+      <a href="#install">安装</a>
+      <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">清了没？</span>
+      <h1>拍很多，<br><mark>留几张</mark>。</h1>
+      <p class="lead">轻了相册是一个 AI 帮你挑照片的安卓 App。同一个地方拍了几十张，它替你挑出三五张精华；拍糊的、重复的、过期的截图，它先勾好。你只管扫一眼，点确认。删完，手机轻了，心也轻了。</p>
+      <div class="cta">
+        <a class="btn primary dl" href="download/qingle-album-v2.8.0.apk" download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+          下载安卓版
+        </a>
+        <a class="btn ghost" href="#install">怎么安装</a>
+      </div>
+      <p class="meta">v2.8.0 · 48 MB · 安卓 11 及以上 · 免费，不用注册，没有广告</p>
+      <div class="stats">
+        <div class="stat"><b>134 GB</b>作者手机腾出的空间</div>
+        <div class="stat"><b>不联网</b>照片不出手机</div>
+        <div class="stat"><b>开源</b>免费，没有广告</div>
+      </div>
+    </div>
+    <div class="phone">
+      <img src="img/home.jpg" alt="轻了相册首页：手机存储，相册还能轻 45.5 GB" width="360" height="797">
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">三个承诺</p>
+      <h2>放心把相册交给它</h2>
+    </div>
+    <div class="promises">
+      <div class="promise">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+        <h3>照片不出手机</h3>
+        <p>App 没有联网权限。人脸检测、识字、美感打分用的都是装在手机里的离线模型，一张照片都不会传出去。</p>
+      </div>
+      <div class="promise">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
+        <h3>删错了也能找回</h3>
+        <p>App 自己删不了照片。每次删除都要你在系统弹窗里点确认，删掉的先进“最近删除”，30 天内都能恢复。</p>
+      </div>
+      <div class="promise">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/></svg></div>
+        <h3>收藏的永远不删</h3>
+        <p>收藏的照片和视频、证件、设为好评的截图，永远不会被建议删除。AI 只负责推荐，删不删由你决定。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">它能做什么</p>
+      <h2>不只是删，是帮你管相册</h2>
+      <p>先给每张照片打分，再帮你删；平时找证件、翻截图，打开它点一下就到。</p>
+    </div>
+
+    <div class="feature">
+      <div>
+        <p class="num">01 · 场景精选</p>
+        <h3>拍了 135 张，<mark>留 5 张</mark>精华</h3>
+        <p>出去玩一趟，同一个地方能拍几十张。它按时间和地点把一次出游切成一个个场景，每个场景挑出三五张拍得好、又不重复的，其余帮你勾好。</p>
+        <ul>
+          <li>看清晰度、曝光、有没有人闭眼、构图美感</li>
+          <li>每个场景单独删，只删眼前这一组</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/scenes.jpg" alt="场景精选：拍了 135 张，留 5 张" loading="lazy" width="300" height="664"><figcaption>为保护隐私，截图里的人物已打码</figcaption></figure>
+    </div>
+
+    <div class="feature">
+      <div>
+        <p class="num">02 · 美感排行</p>
+        <h3>整个相册，按 1 到 10 分排一遍</h3>
+        <p>打分用的是 Google 研究院提出的照片美感模型 NIMA。它看过 25 万多张摄影比赛照片，每张平均有 200 个人打过分，学会了“大多数人觉得哪张好看”。整个模型只有 6 MB 多，装在手机里就能跑。</p>
+        <ul>
+          <li>从低到高看，拍得最一般的一眼就能找到</li>
+          <li>只排序不勾选，分数只是参考</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/aesthetic.jpg" alt="美感排行：照片左上角带分数" loading="lazy" width="300" height="664"></figure>
+    </div>
+
+    <div class="feature">
+      <div>
+        <p class="num">03 · 分类相册</p>
+        <h3>找身份证、翻聊天截图，<mark>点一下</mark>就到</h3>
+        <p>它会认出每张截图、每张照片里的字，按内容自动分好类：证件、聊天记录、文章与文件、票据行程、订单物流。每一类点开就是一个相册，看大图、分享、删除都行。</p>
+        <ul>
+          <li>选几张拼成长图，直接发给朋友、微信、Get笔记</li>
+          <li>学员、客户夸你的聊天截图可以设为“好评”，单独成一个相册</li>
+          <li>证件上的长串号码在手机里也是打了码存的</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/albums.jpg" alt="分类相册：证件、聊天记录、文章、票据、订单" loading="lazy" width="300" height="664"><figcaption>缩略图已打码</figcaption></figure>
+    </div>
+
+    <div class="feature">
+      <div>
+        <p class="num">04 · 压缩视频</p>
+        <h3>4K 视频变 1080p，体积只剩<mark>五分之一</mark></h3>
+        <p>手机里最占地方的往往是视频。它把 4K 视频转成 1080p 的 H.265，手机、电视上看几乎没区别；拍摄时间、地点、横竖方向都不变。</p>
+        <ul>
+          <li>压好的放在原视频旁边，你对比看过、点确认，原视频才进“最近删除”</li>
+          <li>作者的手机靠这一项能再省 100 多 GB</li>
+        </ul>
+      </div>
+      <figure class="shot"><img src="img/compress.jpg" alt="压缩视频：907 个视频能再省 111 GB" loading="lazy" width="300" height="664"><figcaption>视频画面已打码</figcaption></figure>
+    </div>
+
+    <div class="grid" style="margin-top:24px">
+      <div class="mini"><h4>相似照片</h4><p>连拍的、重复保存的分成一组，每组留最好的一张。</p></div>
+      <div class="mini"><h4>废片</h4><p>拍糊的、太暗的、误拍的先勾好。懂背景虚化，人像照不会被当成糊的。</p></div>
+      <div class="mini"><h4>刚拍的</h4><p>拍完照长按图标选“看刚拍的”，当场打分，拍得不好的马上删。</p></div>
+      <div class="mini"><h4>截图笔记</h4><p>看直播、上网课连续截的一串图，一键拼成长图、整理出文字。</p></div>
+      <div class="mini"><h4>用完就没用的</h4><p>取件码、验证码、付款码，过几天自动勾上。</p></div>
+      <div class="mini"><h4>视频场景精选</h4><p>同一个地方拍了好几段视频，推荐留 2 到 4 段。</p></div>
+      <div class="mini"><h4>可删的视频</h4><p>黑屏、误录、重复保存、不到 3 秒的视频，抽帧检查后勾好。</p></div>
+      <div class="mini"><h4>越用越懂你</h4><p>你改过的推荐它会记住，慢慢知道你更看重好看还是清楚。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="name" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">名字的由来</p>
+      <h2>为什么叫“轻了”</h2>
+      <p>“清了”和“轻了”读音一样，意思一前一后。</p>
+    </div>
+    <div class="name">
+      <div class="word"><div class="big">清了</div><div class="py">qīng le · 动作</div><p>相册清了。就像“吃了没？”那样的日常问候，每月它会问你一句：这个月，相册清了没？</p></div>
+      <div class="word"><div class="big"><mark>轻了</mark></div><div class="py">qīng le · 感受</div><p>手机轻了，心也轻了。删完的那一刻，它会告诉你：相册轻了 3.2 GB。</p></div>
+    </div>
+    <div class="flow"><span>清了没？</span><i>→</i><span>AI 替你挑好</span><i>→</i><span>你点一下确认</span><i>→</i><span class="hl">轻了</span></div>
+    <div class="design">
+      <img src="img/logo.svg" alt="轻了相册图标">
+      <div>
+        <p><b>图标</b>：3×3 的照片格子，右上角那一张被挑了出来，绿底，一颗黄星。一堆照片里，留下最好的那张。</p>
+        <p><b>配色</b>：白底，让界面本身就“轻”；品牌绿<span class="sw" style="background:#2fc4a0"></span>来自作者书的封面；黄色<span class="sw" style="background:#f6cc45"></span>只用在重点上，像荧光笔划过一样。</p>
+        <p>名字里特意没有“清理”两个字：它不想做又一个清理大师，而是帮你挑出值得留的那几张。它原来叫“D图”，D 是 Delete。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">安装</p>
+      <h2>两种装法，选一种</h2>
+      <p>支持安卓 11 及以上：小米、OPPO、vivo、荣耀、一加等都可以，国行手机不需要 Google 服务。</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <span class="badge">最省事</span>
+        <h3>方法一：交给 AI 帮你装</h3>
+        <ol>
+          <li>手机打开“开发者选项”和“USB 调试”（不会的话，问 AI 你的手机型号怎么开）。</li>
+          <li>用数据线把手机连上电脑。</li>
+          <li>把下面这段话发给电脑上能操作电脑的 AI 助手（比如 Claude Code）：</li>
+        </ol>
+        <div class="prompt" id="prompt">帮我把这个安卓 App 装到我的手机上：https://github.com/vickysy/qingle-album 。手机已经用数据线连上电脑，打开了 USB 调试。</div>
+        <button class="btn ghost copy" id="copy" type="button">复制这段话</button>
+      </div>
+      <div class="step">
+        <h3>方法二：直接下载安装包</h3>
+        <ol>
+          <li>在手机浏览器里点下面的按钮，下载安装包（48 MB）。</li>
+          <li>下载完点开安装。提示“未知来源”或“外部来源应用”时，允许这一次。</li>
+          <li>打开后允许访问照片时选“全部允许”。第一次分析几千张照片要两三分钟，建议边充电边等。</li>
+        </ol>
+        <a class="btn primary dl" href="download/qingle-album-v2.8.0.apk" download>下载安卓版 v2.8.0</a>
+        <p class="meta">也可以去 <a href="https://github.com/vickysy/qingle-album/releases/latest" target="_blank" rel="noopener" style="color:var(--green-ink)">GitHub Releases</a> 下载。</p>
+      </div>
+    </div>
+    <div class="tips">
+      <p><b>华为、荣耀</b>：开着“纯净模式”时安装会被拦住，先暂时关掉；用数据线装时，USB 用途选“仅充电”，并打开“仅充电模式下允许 ADB 调试”，手机要解锁亮屏。</p>
+      <p><b>微信转发的安装包</b>：文件名结尾可能多出“.1”，在文件管理里把“.1”删掉再装。</p>
+      <p><b>升级</b>：下载新版本直接覆盖安装，分析结果和设置都保留。装过“D图”的也一样。</p>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">常见问题</p>
+      <h2>你可能想问</h2>
+    </div>
+    <details><summary>iPhone、纯血鸿蒙能用吗？</summary><p>暂时不能。现在只有安卓版，华为鸿蒙 4 及以前的手机可以装，鸿蒙 5 及以上（纯血鸿蒙）和 iPhone 暂时用不了。</p></details>
+    <details><summary>真的不会把照片传出去吗？</summary><p>不会。它没有联网权限，你可以在手机“设置 → 应用 → 轻了相册 → 权限”里自己确认。代码也全部公开在 GitHub 上，谁都可以检查。</p></details>
+    <details><summary>开了云相册同步，删除会影响云端吗？</summary><p>可能会。开了云相册同步的，手机上删除后云端也可能跟着删。清理前建议先备份重要照片。</p></details>
+    <details><summary>它判断得准吗？</summary><p>都是规则和小模型的判断，会有错，所以它只负责推荐。只有很确定的废片才默认勾选；拿不准的只标出来，删不删由你决定。</p></details>
+    <details><summary>收费吗？</summary><p>免费，不用注册，没有广告。代码用 Apache-2.0 协议开源。</p></details>
+    <details><summary>遇到问题怎么反馈？</summary><p>在 App 里“设置 → 反馈问题”生成一份报告（只有手机型号、系统版本、照片数量和出错记录，没有照片），到 GitHub 提 Issue。</p></details>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">关于作者</p>
+      <h2>一个不会写代码的人，用 AI 做出来的</h2>
+    </div>
+    <div class="story">
+      <p>我是木妈。我的手机是 512G 的，照片 7000 多张、视频 1000 多个，又满了。我想删，可每次打开相册，划了半天一张都没删掉，因为<b>删照片最难的不是删，是挑</b>。</p>
+      <p>于是我用大白话跟 AI 描述了这个痛点。第二天傍晚，第一版就装在了我的手机上。后来朋友们看了都想要，我就把它开源了。</p>
+      <p>有了 AI，人人都可以是 builder。做一个给大众用的产品依然很难，但做一个解决自己痛点的产品，已经很简单了。如果你也有一个“要是有个软件能做这个就好了”的念头，也许，你可以自己把它做出来。</p>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>轻了相册 · 拍很多，留几张</span>
+    <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub 开源（Apache-2.0）</a>
+    <a class="r" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026059226号-1</a>
+  </div>
+</footer>
+
+<div class="wx" id="wx" role="dialog" aria-label="请在浏览器中打开">
+  <svg viewBox="0 0 80 80" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 72C30 60 50 44 62 14"/><path d="M48 18l14-4 3 14"/></svg>
+  <p>微信里不能直接下载安装包<br>点右上角 <b>···</b>，选 <b>在浏览器打开</b><br>再点“下载安卓版”</p>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var header=document.getElementById('top');
+  function onScroll(){header.classList.toggle('scrolled',window.scrollY>4)}
+  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+
+  function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(function(){el.classList.remove('on')},1800)}
+
+  // 微信、QQ 内置浏览器拦截 apk 下载：提示去浏览器打开
+  var ua=navigator.userAgent||'';
+  var inApp=/MicroMessenger|QQ\/|WeiBo|DingTalk/i.test(ua);
+  var wx=document.getElementById('wx');
+  Array.prototype.forEach.call(document.querySelectorAll('a.dl'),function(a){
+    a.addEventListener('click',function(e){
+      if(inApp){e.preventDefault();wx.classList.add('on')}
+      else if(/iPhone|iPad|iPod/i.test(ua)){e.preventDefault();toast('现在只有安卓版，iPhone 暂时用不了')}
+    });
+  });
+  wx.addEventListener('click',function(){wx.classList.remove('on')});
+
+  document.getElementById('copy').addEventListener('click',function(){
+    var text=document.getElementById('prompt').textContent;
+    function fallback(){var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('已复制')}catch(e){toast('复制失败，请长按文字复制')}document.body.removeChild(ta)}
+    if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(function(){toast('已复制')},fallback)}else{fallback()}
+  });
+})();
+</script>
+</body>
+</html>
