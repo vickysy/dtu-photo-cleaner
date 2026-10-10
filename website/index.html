@@ -25,7 +25,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg)}
 a{color:inherit;text-decoration:none}
-img{display:block;max-width:100%}
+img{display:block;max-width:100%;height:auto}
 h1,h2,h3,p{margin:0}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
 mark{background:linear-gradient(transparent 58%,var(--yellow) 58%,var(--yellow) 90%,transparent 90%);color:inherit;padding:0 2px}
@@ -99,6 +99,53 @@ section{padding:56px 0}
 .feature li::before{content:"";position:absolute;left:2px;top:.65em;width:8px;height:8px;border-radius:2px;background:var(--green)}
 .shot img{border-radius:28px;border:1px solid var(--line);box-shadow:0 24px 48px -24px rgba(29,33,41,.28);width:100%}
 .shot figcaption{font-size:13px;color:var(--faint);text-align:center;margin-top:10px}
+/* 示意图：不用截图（截图里有证件、孩子，要打码），用图标画出来 */
+.ill{background:#fff;border:1px solid var(--line);border-radius:28px;box-shadow:0 24px 48px -24px rgba(29,33,41,.28);padding:18px 16px 16px;font-size:13px;line-height:1.5}
+.ill-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.ill-top b{display:block;font-size:17px}
+.ill-top small{color:var(--faint);font-size:12px}
+.pill{background:var(--card);border-radius:10px;padding:4px 10px;font-size:13px;white-space:nowrap}
+.pill b{display:inline;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.tile{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden}
+.tile::after{content:"";position:absolute;right:5px;bottom:5px;width:15px;height:15px;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.25)}
+.tile.del::after{background:var(--green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.2l2.6 2.6L12 5.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat;border-color:#fff}
+.tile.best{outline:2px solid var(--green);outline-offset:-2px}
+.tile .star{position:absolute;left:4px;top:4px;background:var(--green);color:#fff;font-size:10px;line-height:1;border-radius:6px;padding:3px 5px;font-weight:600}
+.tile .star::before{content:"★ ";color:var(--yellow)}
+.p1{background:linear-gradient(180deg,#cfe8f7 0 42%,#86bd84 42%)}
+.p2{background:linear-gradient(180deg,#d8edf8 0 50%,#9cc9a1 50% 72%,#6f9e76 72%)}
+.p3{background:linear-gradient(170deg,#f7e2b8,#e5b679)}
+.p4{background:radial-gradient(circle at 70% 30%,#fff2bf 0 12%,transparent 13%),linear-gradient(180deg,#a9d6f0 0 55%,#4f8fbf 55%)}
+.p5{background:linear-gradient(180deg,#e4ecf1 0 48%,#a7bfa2 48%)}
+.p6{background:linear-gradient(180deg,#bfe0f3 0 38%,#c9b48d 38% 60%,#8fae8a 60%)}
+.ill-foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.ill-foot span{color:var(--sub)}
+.btn-del{background:#ef5b4c;color:#fff;border-radius:999px;padding:6px 14px;font-weight:600;font-size:13px}
+.cats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.cat{background:var(--card);border-radius:14px;padding:12px}
+.cat i{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;margin-bottom:8px}
+.cat i svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.cat b{display:block;font-size:14px}
+.cat small{color:var(--faint);font-size:12px}
+.acts{display:flex;gap:6px;margin-top:12px}
+.acts span{flex:1;text-align:center;background:var(--green-soft);color:var(--green-ink);border-radius:10px;padding:7px 0;font-weight:600}
+.acts span.d{background:#fdeceb;color:#d8483a}
+.vid{display:flex;gap:10px;align-items:center;background:var(--card);border-radius:14px;padding:10px}
+.vid .th{position:relative;flex:none;width:64px;height:64px;border-radius:10px;background:linear-gradient(160deg,#a9d6f0,#4f8fbf 60%,#3b6f97)}
+.vid .th::after{content:"";position:absolute;left:24px;top:21px;border-left:16px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent;opacity:.9}
+.vid b{display:block;font-size:14px}
+.vid small{color:var(--faint);font-size:12px}
+.bars{margin-top:14px}
+.bars .row{display:grid;grid-template-columns:58px 1fr 48px;gap:8px;align-items:center;margin-top:8px}
+.bars .row em{white-space:nowrap;font-style:normal;font-size:12px;font-weight:600;color:var(--sub);text-align:right}
+.bars .row span{color:var(--sub);font-size:12px}
+.bars .bar{height:20px;border-radius:7px;background:#d7dbe0}
+.bars .bar.new{width:21%;background:var(--green)}
+.saved{margin-top:14px;background:var(--yellow-soft);border-radius:12px;padding:10px 12px;font-size:13px}
+.saved b{font-size:18px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chips span{border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--sub);font-size:12px}
 @media (max-width:760px){
   .feature,.feature:nth-child(odd){grid-template-columns:1fr;gap:20px}
   .feature:nth-child(odd) .shot{order:0}
@@ -210,7 +257,7 @@ footer .r{margin-left:auto}
       </div>
     </div>
     <div class="phone">
-      <img src="img/home.jpg" alt="轻了相册首页：手机存储，相册还能轻 45.5 GB" width="360" height="797">
+      <img src="img/welcome.jpg" alt="欢迎使用轻了相册：每组只留最好的一张，每个场景留几张精华，照片不出手机" width="360" height="614">
     </div>
   </div>
 </section>
@@ -259,7 +306,16 @@ footer .r{margin-left:auto}
           <li>每个场景单独删，只删眼前这一组</li>
         </ul>
       </div>
-      <figure class="shot"><img src="img/scenes.jpg" alt="场景精选：拍了 135 张，留 5 张" loading="lazy" width="300" height="664"><figcaption>为保护隐私，截图里的人物已打码</figcaption></figure>
+      <figure class="shot"><div class="ill" role="img" aria-label="示意图：一个场景拍了 135 张，留 5 张精华，其余 130 张已勾选">
+        <div class="ill-top"><div><b>10月4日 · 出游</b><small>12:15–15:40 · 拍了 135 张</small></div><span class="pill">留 <b>5</b> 张</span></div>
+        <div class="tiles">
+          <div class="tile p2 best"><span class="star">精华</span></div><div class="tile p4 best"><span class="star">精华</span></div><div class="tile p1 best"><span class="star">精华</span></div><div class="tile p6 best"><span class="star">精华</span></div>
+          <div class="tile p5 best"><span class="star">精华</span></div><div class="tile p2 del"></div><div class="tile p1 del"></div><div class="tile p5 del"></div>
+          <div class="tile p5 del"></div><div class="tile p1 del"></div><div class="tile p6 del"></div><div class="tile p2 del"></div>
+          <div class="tile p4 del"></div><div class="tile p5 del"></div><div class="tile p1 del"></div><div class="tile p2 del"></div>
+        </div>
+        <div class="ill-foot"><span>其余 130 张已勾好</span><span class="btn-del">删除 130 张</span></div>
+      </div><figcaption>示意图</figcaption></figure>
     </div>
 
     <div class="feature">
@@ -272,7 +328,7 @@ footer .r{margin-left:auto}
           <li>只排序不勾选，分数只是参考</li>
         </ul>
       </div>
-      <figure class="shot"><img src="img/aesthetic.jpg" alt="美感排行：照片左上角带分数" loading="lazy" width="300" height="664"></figure>
+      <figure class="shot"><img src="img/aesthetic.jpg" alt="美感排行：最好看的在前，照片左上角带分数" loading="lazy" width="300" height="600"><figcaption>iPhone 测试版截图。iPhone 上用系统自带的美感评估，安卓版用 NIMA</figcaption></figure>
     </div>
 
     <div class="feature">
@@ -286,7 +342,11 @@ footer .r{margin-left:auto}
           <li>证件上的长串号码在手机里也是打了码存的</li>
         </ul>
       </div>
-      <figure class="shot"><img src="img/albums.jpg" alt="分类相册：证件、聊天记录、文章、票据、订单" loading="lazy" width="300" height="664"><figcaption>缩略图已打码</figcaption></figure>
+      <figure class="shot"><div class="ill" role="img" aria-label="示意图：分类相册，好评、证件、聊天记录、文章与文件、票据行程、订单物流">
+        <div class="ill-top"><div><b>分类相册</b><small>按图里的字自动分好</small></div></div>
+        <div class="cats"><div class="cat"><i style="background:#f6cc45"><svg viewBox="0 0 24 24"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z"/></svg></i><b>好评</b><small>客户的夸奖</small></div><div class="cat"><i style="background:#2fc4a0"><svg viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 15.5c.6-1.4 1.6-2 2.7-2s2.1.6 2.7 2M14 10h4M14 13.5h3"/></svg></i><b>证件</b><small>身份证、银行卡</small></div><div class="cat"><i style="background:#5cbf7a"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M8 9h8M8 12h5"/></svg></i><b>聊天记录</b><small>微信聊天截图</small></div><div class="cat"><i style="background:#4a9be0"><svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15.5h6"/></svg></i><b>文章与文件</b><small>长文、课件</small></div><div class="cat"><i style="background:#f08a5d"><svg viewBox="0 0 24 24"><path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M14 7v10" stroke-dasharray="2 2"/></svg></i><b>票据行程</b><small>车票、发票</small></div><div class="cat"><i style="background:#9b8cf2"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg></i><b>订单物流</b><small>订单、快递</small></div></div>
+        <div class="acts"><span>拼长图</span><span>分享</span><span>设为好评</span><span class="d">删除</span></div>
+      </div><figcaption>示意图</figcaption></figure>
     </div>
 
     <div class="feature">
@@ -299,7 +359,16 @@ footer .r{margin-left:auto}
           <li>作者的手机靠这一项能再省 100 多 GB</li>
         </ul>
       </div>
-      <figure class="shot"><img src="img/compress.jpg" alt="压缩视频：907 个视频能再省 111 GB" loading="lazy" width="300" height="664"><figcaption>视频画面已打码</figcaption></figure>
+      <figure class="shot"><div class="ill" role="img" aria-label="示意图：4K 视频压成 1080p，体积约为原来的五分之一">
+        <div class="ill-top"><div><b>压缩视频</b><small>转成 1080p H.265</small></div><span class="pill">1080p</span></div>
+        <div class="vid"><div class="th"></div><div><b>海边日落.mp4</b><small>4K · 9 分 43 秒</small></div></div>
+        <div class="bars">
+          <div class="row"><span>原视频 4K</span><div class="bar"></div><em>100%</em></div>
+          <div class="row"><span>压缩后</span><div class="bar new"></div><em>约 1/5</em></div>
+        </div>
+        <div class="saved">作者的手机：907 个视频能再省 <b>111 GB</b></div>
+        <div class="chips"><span>拍摄时间不变</span><span>地点不变</span><span>你确认后才删原视频</span></div>
+      </div><figcaption>示意图</figcaption></figure>
     </div>
 
     <div class="grid" style="margin-top:24px">
@@ -382,7 +451,7 @@ footer .r{margin-left:auto}
       <p class="k">常见问题</p>
       <h2>你可能想问</h2>
     </div>
-    <details><summary>iPhone、纯血鸿蒙能用吗？</summary><p>暂时不能。现在只有安卓版，华为鸿蒙 4 及以前的手机可以装，鸿蒙 5 及以上（纯血鸿蒙）和 iPhone 暂时用不了。</p></details>
+    <details><summary>iPhone、纯血鸿蒙能用吗？</summary><p>现在能下载的只有安卓版。iPhone 版还在测试，暂时不能下载，页面上有几张截图来自 iPhone 测试版。华为鸿蒙 4 及以前的手机可以装安卓版，鸿蒙 5 及以上（纯血鸿蒙）暂时用不了。</p></details>
     <details><summary>真的不会把照片传出去吗？</summary><p>不会。它没有联网权限，你可以在手机“设置 → 应用 → 轻了相册 → 权限”里自己确认。代码也全部公开在 GitHub 上，谁都可以检查。</p></details>
     <details><summary>开了云相册同步，删除会影响云端吗？</summary><p>可能会。开了云相册同步的，手机上删除后云端也可能跟着删。清理前建议先备份重要照片。</p></details>
     <details><summary>它判断得准吗？</summary><p>都是规则和小模型的判断，会有错，所以它只负责推荐。只有很确定的废片才默认勾选；拿不准的只标出来，删不删由你决定。</p></details>
