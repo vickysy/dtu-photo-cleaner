@@ -246,6 +246,8 @@ details p{color:var(--sub);margin-top:10px;font-size:15px}
 .site .sp{flex:1;min-height:14px}
 @media (max-width:860px){.more{grid-template-columns:1fr}}
 @media (max-width:480px){.book{grid-template-columns:96px 1fr;gap:16px;padding:20px}.book img{width:96px}}
+.sibling-product{display:flex;gap:20px;align-items:center;border-top:1px solid var(--line);margin-top:28px;padding-top:28px}.sibling-product>img{width:56px;height:56px;border-radius:13px;flex:none}.sibling-product .k{font-size:12px;color:var(--sub)}.sibling-product h3{font-size:21px;margin:4px 0}.sibling-product p{font-size:14px;color:var(--sub)}.sibling-product .btn{margin-left:auto;flex:none}
+@media(max-width:600px){.sibling-product{flex-wrap:wrap;gap:14px}.sibling-product>div{flex:1;min-width:0}.sibling-product h3{font-size:19px}.sibling-product p{font-size:12px}.sibling-product .btn{margin-left:70px;font-size:14px}}
 footer{border-top:1px solid var(--line);padding:28px 0 40px;font-size:14px;color:var(--faint)}
 footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
 footer a:hover{color:var(--ink)}
@@ -571,9 +573,15 @@ footer .r{margin-left:auto}
         <ul><li>学习路径</li><li>真实案例库</li><li>免费 Skill 下载</li><li>问木妈</li><li>21 天 AI 实操营</li></ul>
         <div class="sp"></div>
         <a class="btn ghost" href="https://mumaaidea.com/" target="_blank" rel="noopener">去 mumaaidea.com</a>
-        <a href="https://mumaaidea.com/products" target="_blank" rel="noopener" style="margin-top:12px;font-size:14px;color:var(--green-ink)">看看木妈做的其他产品 →</a>
+        <a href="https://pingke.nativeailab.cn" target="_blank" rel="noopener" style="margin-top:12px;font-size:14px;color:var(--green-ink)">木妈的另一个作品：屏刻 PingKe，Mac 上把讲解录清楚 →</a>
+        <a href="https://mumaaidea.com/products" target="_blank" rel="noopener" style="margin-top:6px;font-size:14px;color:var(--green-ink)">看看木妈做的所有产品 →</a>
       </div>
     </div>
+    <aside class="sibling-product" aria-label="木妈的另一个作品：屏刻">
+      <img src="img/pingke-icon.png" alt="屏刻 PingKe" width="56" height="56" loading="lazy">
+      <div><p class="k">同一个作者，另一个真实问题。</p><h3>屏刻 PingKe · 把讲解，录清楚。</h3><p>Mac 截图与录屏工具。透明提词、暂停续录、鼠标跟随放大，让教学演示更清楚。</p></div>
+      <a class="btn ghost" href="https://pingke.nativeailab.cn/" target="_blank" rel="noopener">看看屏刻 ↗</a>
+    </aside>
   </div>
 </section>
 </main>
@@ -582,6 +590,8 @@ footer .r{margin-left:auto}
   <div class="wrap">
     <span>轻了相册 · 拍很多，留几张</span>
     <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub 开源（Apache-2.0）</a>
+    <a href="https://pingke.nativeailab.cn/" target="_blank" rel="noopener">屏刻录屏 ↗</a>
+    <a href="https://mumaaidea.com/about" target="_blank" rel="noopener">认识木妈 ↗</a>
     <a class="r" href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">蜀ICP备2026059226号-1</a>
   </div>
 </footer>
