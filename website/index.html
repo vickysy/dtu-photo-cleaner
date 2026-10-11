@@ -16,7 +16,8 @@
 <style>
 :root{
   --bg:#fff; --ink:#1d2129; --sub:#5c6370; --faint:#8a909a; --line:#e6e8eb; --card:#f7f8fa;
-  --green:#2fc4a0; --green-ink:#119c7e; --green-soft:#e8f8f3; --yellow:#f6cc45; --yellow-soft:#fff4cc;
+  --green:#2fc4a0; --green-ink:#119c7e; --green-dark:#05261e; --green-soft:#e8f8f3; --yellow:#f6cc45; --yellow-soft:#fff4cc;
+  --night:#0d1311; --cream:#f2f0ea;
   --radius:20px; --max:1080px;
   font:16px/1.7 -apple-system,BlinkMacSystemFont,"PingFang SC","HarmonyOS Sans SC","MiSans","Hiragino Sans GB","Microsoft YaHei",sans-serif;
   color:var(--ink); background:var(--bg);
@@ -30,62 +31,93 @@ h1,h2,h3,p{margin:0}
 .wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
 mark{background:linear-gradient(transparent 58%,var(--yellow) 58%,var(--yellow) 90%,transparent 90%);color:inherit;padding:0 2px}
 
-/* 顶栏 */
-header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.9);backdrop-filter:saturate(1.6) blur(12px);-webkit-backdrop-filter:saturate(1.6) blur(12px);border-bottom:1px solid transparent;transition:border-color .2s}
-header.scrolled{border-bottom-color:var(--line)}
-.bar{display:flex;align-items:center;gap:12px;height:60px}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+/* 顶栏：首屏是深色，顶栏透明、浅色字；滚过首屏变成白色毛玻璃 */
+header{position:fixed;top:0;left:0;right:0;z-index:10;color:var(--cream);border-bottom:1px solid transparent;transition:background .25s,color .25s,border-color .25s}
+header.solid{color:var(--ink);background:rgba(255,255,255,.88);backdrop-filter:saturate(1.6) blur(12px);-webkit-backdrop-filter:saturate(1.6) blur(12px);border-bottom-color:var(--line)}
+.bar{display:flex;align-items:center;gap:12px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:.06em}
 .brand img{width:32px;height:32px}
-.bar nav{margin-left:auto;display:flex;gap:22px;font-size:15px;color:var(--sub)}
-.bar nav a:hover{color:var(--ink)}
-@media (max-width:640px){.bar nav .opt{display:none}}
+.bar nav{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:15px;color:rgba(242,240,234,.72)}
+.bar nav a{transition:color .15s}
+.bar nav a:hover{color:#fff}
+header.solid .bar nav{color:var(--sub)}
+header.solid .bar nav a:hover{color:var(--ink)}
+.bar nav .pill{border:1px solid rgba(242,240,234,.28);background:rgba(13,19,17,.35);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:999px;padding:5px 16px;color:var(--cream)}
+.bar nav .pill:hover{border-color:rgba(47,196,160,.75)}
+header.solid .bar nav .pill{border-color:var(--line);background:var(--card);color:var(--ink)}
+@media (max-width:640px){.bar nav .opt{display:none}.bar nav{gap:14px}}
 
-/* 按钮 */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 26px;border-radius:999px;font-size:17px;font-weight:600;cursor:pointer;border:0;transition:transform .15s,box-shadow .15s}
+/* 按钮：主按钮绿底深字、带光晕，悬停时上浮、一道高光扫过 */
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:52px;padding:0 26px;border-radius:999px;font-size:17px;font-weight:700;letter-spacing:.04em;cursor:pointer;border:0;transition:transform .15s,box-shadow .15s,background .15s,border-color .15s}
 .btn:active{transform:scale(.97)}
-.btn.primary{background:var(--green);color:#fff;box-shadow:0 6px 18px rgba(47,196,160,.32)}
-.btn.primary:hover{box-shadow:0 8px 24px rgba(47,196,160,.42)}
+.btn.primary{background:var(--green);color:var(--green-dark);box-shadow:0 10px 30px rgba(47,196,160,.32)}
+.btn.primary::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.6) 50%,transparent 68%);transform:translateX(-110%);pointer-events:none}
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(47,196,160,.45)}
+.btn.primary:hover::after{animation:sheen .7s ease-out}
+@keyframes sheen{to{transform:translateX(110%)}}
 .btn.ghost{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--green);transform:translateY(-2px)}
+.btn.glass{background:rgba(13,19,17,.45);color:var(--cream);border:1px solid rgba(242,240,234,.32);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.btn.glass:hover{background:rgba(242,240,234,.12);border-color:rgba(47,196,160,.75);transform:translateY(-2px)}
 .btn svg{width:20px;height:20px}
-
-/* 首屏 */
-.hero{padding:56px 0 40px}
-.hero .wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center}
-.eyebrow{display:inline-block;font-size:14px;font-weight:600;color:var(--green-ink);background:var(--green-soft);border-radius:999px;padding:4px 12px;margin-bottom:18px}
-.hero h1{font-size:clamp(40px,7vw,64px);line-height:1.15;letter-spacing:.01em;font-weight:800}
-.hero .lead{font-size:clamp(17px,2.2vw,19px);color:var(--sub);margin:20px 0 28px;max-width:34em}
 .cta{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .meta{margin-top:14px;font-size:14px;color:var(--faint)}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:28px;max-width:460px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:13px;color:var(--sub);line-height:1.5}
-.stat b{display:block;font-size:20px;color:var(--ink);line-height:1.3;white-space:nowrap}
-.phone{position:relative;justify-self:center;width:min(100%,320px)}
-.phone img{border-radius:34px;border:1px solid var(--line);box-shadow:0 30px 60px -20px rgba(29,33,41,.25)}
-.phone .tag{position:absolute;left:-18px;bottom:64px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 12px;font-size:13px;box-shadow:0 10px 24px rgba(29,33,41,.12)}
-.phone .tag b{color:var(--green-ink)}
-@media (max-width:860px){
-  .hero{padding:32px 0 24px}
-  .hero .wrap{grid-template-columns:1fr;gap:36px}
-  .phone{width:min(78%,300px)}
-  .phone .tag{left:-10px}
+
+/* 首屏：背后是一面会动的照片墙——AI 一轮轮挑出精华（★），其余变暗、打勾 */
+.hero{position:relative;min-height:100vh;min-height:100svh;display:flex;align-items:center;justify-content:center;text-align:center;background:var(--night);color:var(--cream);overflow:hidden;padding:104px 0 88px}
+.wall{position:absolute;inset:-10px;display:grid;gap:6px;align-content:start;pointer-events:none}
+.wt{position:relative;aspect-ratio:1;border-radius:9px;background:#1a221f center/cover no-repeat;transition:opacity .8s ease,transform .5s ease,box-shadow .4s ease}
+.wt::after{content:"";position:absolute;right:8%;bottom:8%;width:22%;height:22%;max-width:20px;max-height:20px;border-radius:50%;border:1.5px solid rgba(255,255,255,.85);opacity:0;transition:opacity .5s}
+.wt.gone{opacity:.22}
+.wt.gone::after{opacity:1;background:var(--green) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.2l2.6 2.6L12 5.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/100% no-repeat}
+.wt.pick{z-index:1;box-shadow:0 0 0 3px var(--green),0 12px 30px rgba(0,0,0,.5)}
+.wt.pick::before{content:"★ 精华";position:absolute;left:6%;top:6%;background:var(--green);color:#fff;font-size:11px;font-weight:700;line-height:1;border-radius:6px;padding:4px 6px;white-space:nowrap}
+.scrim{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 62% 58% at 50% 50%,rgba(13,19,17,.9) 0%,rgba(13,19,17,.74) 48%,rgba(13,19,17,.32) 100%),linear-gradient(180deg,rgba(13,19,17,.72) 0%,rgba(13,19,17,.08) 22%,rgba(13,19,17,.08) 72%,rgba(13,19,17,.96) 100%)}
+.hero-in{position:relative;z-index:2;padding:0 20px;max-width:980px}
+.kicker{margin:0 0 22px;font-size:13px;font-weight:700;letter-spacing:.3em;color:var(--green);text-shadow:0 2px 18px rgba(0,0,0,.8)}
+.hero h1{font-size:clamp(46px,9vw,104px);line-height:1.14;letter-spacing:.04em;font-weight:800;text-shadow:0 4px 40px rgba(0,0,0,.7),0 1px 10px rgba(0,0,0,.5)}
+.hero h1 em{font-style:normal;color:var(--yellow)}
+.hero .lead{max-width:33em;margin:26px auto 0;text-wrap:balance;font-size:clamp(16px,1.7vw,19px);line-height:1.9;letter-spacing:.02em;color:rgba(242,240,234,.84);text-shadow:0 2px 20px rgba(0,0,0,.85)}
+.hero .cta{justify-content:center;gap:14px;margin-top:38px}
+.hero .btn{height:58px;min-width:200px;padding:0 34px;font-size:18px}
+.hero .meta{color:rgba(242,240,234,.55);letter-spacing:.04em}
+.hstats{display:flex;justify-content:center;gap:clamp(24px,5vw,60px);margin:46px 0 0;padding:0;list-style:none}
+.hstats b{display:block;font-size:clamp(22px,2.6vw,30px);font-weight:800;line-height:1.3;color:var(--cream);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hstats span{font-size:13px;letter-spacing:.06em;color:rgba(242,240,234,.6);text-shadow:0 2px 14px rgba(0,0,0,.8)}
+.wall-note{position:absolute;z-index:2;left:0;right:0;bottom:20px;padding:0 20px;font-size:12px;letter-spacing:.06em;color:rgba(242,240,234,.5)}
+@media (max-width:640px){
+  /* 手机：上面留一条照片墙（AI 在这里挑），文字从下面开始 */
+  .hero{align-items:flex-start;padding:262px 0 76px}
+  .wall{inset:-10px 6px}
+  .scrim{background:linear-gradient(180deg,rgba(13,19,17,.6) 0,rgba(13,19,17,.1) 72px,rgba(13,19,17,.1) 220px,rgba(13,19,17,.86) 290px,rgba(13,19,17,.9) 100%)}
+  .kicker{letter-spacing:.18em;font-size:12px}
+  .hero .cta{flex-direction:column;align-items:stretch;max-width:320px;margin-left:auto;margin-right:auto}
+  .hstats{display:grid;grid-template-columns:1fr 1fr;gap:18px 24px;max-width:320px;margin:38px auto 0}
 }
+@media (prefers-reduced-motion:reduce){.wt,.wt::after{transition:none}.btn.primary:hover::after{animation:none}.btn:hover{transform:none}}
 
 /* 区块 */
-section{padding:56px 0}
-.sec-head{max-width:40em;margin-bottom:32px}
-.sec-head .k{font-size:14px;font-weight:600;color:var(--green-ink);letter-spacing:.05em}
-.sec-head h2{font-size:clamp(28px,4.4vw,38px);line-height:1.3;margin-top:6px;font-weight:800}
-.sec-head p{color:var(--sub);margin-top:12px;font-size:17px}
+section{padding:88px 0}
+section[id]{scroll-margin-top:64px}
+.sec-head{max-width:40em;margin-bottom:40px}
+.sec-head .k{font-size:13px;font-weight:700;color:var(--green-ink);letter-spacing:.24em}
+.sec-head h2{font-size:clamp(30px,4.8vw,46px);line-height:1.25;letter-spacing:.02em;margin-top:10px;font-weight:800}
+.sec-head p{color:var(--sub);margin-top:14px;font-size:17px}
 .alt{background:var(--card)}
+@media (max-width:640px){section{padding:64px 0}}
 
-/* 三个承诺 */
-.promises{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.promise{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px}
-.promise .ic{width:44px;height:44px;border-radius:12px;background:var(--green-soft);display:grid;place-items:center;margin-bottom:14px}
+/* 三个承诺：左边手机，右边三条，不套卡片 */
+.pgrid{display:grid;grid-template-columns:320px 1fr;gap:72px;align-items:center}
+.phone{justify-self:center;width:min(100%,320px)}
+.phone img{border-radius:34px;border:1px solid var(--line);box-shadow:0 30px 60px -20px rgba(29,33,41,.25)}
+.pgrid .sec-head{margin-bottom:12px}
+.promise{display:grid;grid-template-columns:48px 1fr;gap:2px 18px;padding:22px 0;border-top:1px solid var(--line)}
+.promise:last-child{border-bottom:1px solid var(--line)}
+.promise .ic{grid-row:span 2;width:48px;height:48px;border-radius:14px;background:var(--green-soft);display:grid;place-items:center}
 .promise .ic svg{width:24px;height:24px;stroke:var(--green-ink)}
-.promise h3{font-size:19px;margin-bottom:6px}
+.promise h3{font-size:19px;line-height:1.5}
 .promise p{color:var(--sub);font-size:15px}
-@media (max-width:760px){.promises{grid-template-columns:1fr}}
+@media (max-width:860px){.pgrid{grid-template-columns:1fr;gap:40px}.phone{width:min(70%,280px);order:2}}
 
 /* 主要功能：左右交替 */
 .feature{display:grid;grid-template-columns:1fr 300px;gap:56px;align-items:center;padding:28px 0}
@@ -97,6 +129,7 @@ section{padding:56px 0}
 .feature ul{margin:14px 0 0;padding:0;list-style:none;color:var(--sub);font-size:15px}
 .feature li{position:relative;padding-left:20px;margin-top:6px}
 .feature li::before{content:"";position:absolute;left:2px;top:.65em;width:8px;height:8px;border-radius:2px;background:var(--green)}
+.shot{margin:0}
 .shot img{border-radius:28px;border:1px solid var(--line);box-shadow:0 24px 48px -24px rgba(29,33,41,.28);width:100%}
 .shot figcaption{font-size:13px;color:var(--faint);text-align:center;margin-top:10px}
 /* 示意图：不用截图（截图里有证件、孩子，要打码），用图标画出来 */
@@ -248,6 +281,17 @@ details p{color:var(--sub);margin-top:10px;font-size:15px}
 @media (max-width:480px){.book{grid-template-columns:96px 1fr;gap:16px;padding:20px}.book img{width:96px}}
 .sibling-product{display:flex;gap:20px;align-items:center;border-top:1px solid var(--line);margin-top:28px;padding-top:28px}.sibling-product>img{width:56px;height:56px;border-radius:13px;flex:none}.sibling-product .k{font-size:12px;color:var(--sub)}.sibling-product h3{font-size:21px;margin:4px 0}.sibling-product p{font-size:14px;color:var(--sub)}.sibling-product .btn{margin-left:auto;flex:none}
 @media(max-width:600px){.sibling-product{flex-wrap:wrap;gap:14px}.sibling-product>div{flex:1;min-width:0}.sibling-product h3{font-size:19px}.sibling-product p{font-size:12px}.sibling-product .btn{margin-left:70px;font-size:14px}}
+/* 收尾：和首屏呼应的深色一屏 */
+.outro{position:relative;overflow:hidden;background:var(--night);color:var(--cream);text-align:center;padding:96px 0}
+.outro::before{content:"";position:absolute;left:50%;top:-40%;width:900px;height:600px;transform:translateX(-50%);background:radial-gradient(closest-side,rgba(47,196,160,.22),transparent);pointer-events:none}
+.outro .wrap{position:relative}
+.outro h2{font-size:clamp(34px,6vw,64px);line-height:1.2;letter-spacing:.04em;font-weight:800}
+.outro h2 em{font-style:normal;color:var(--yellow)}
+.outro p.sub{margin-top:16px;color:rgba(242,240,234,.72);font-size:17px}
+.outro .cta{justify-content:center;gap:14px;margin-top:34px}
+.outro .btn{height:56px;min-width:190px;font-size:18px}
+.outro .meta{color:rgba(242,240,234,.5)}
+@media (max-width:640px){.outro{padding:72px 0}.outro .cta{flex-direction:column;align-items:stretch;max-width:320px;margin-left:auto;margin-right:auto}}
 footer{border-top:1px solid var(--line);padding:28px 0 40px;font-size:14px;color:var(--faint)}
 footer .wrap{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center}
 footer a:hover{color:var(--ink)}
@@ -273,41 +317,44 @@ footer .r{margin-left:auto}
       <a class="opt" href="#features">功能</a>
       <a class="opt" href="#name">名字</a>
       <a class="opt" href="#learn">跟木妈学</a>
-      <a href="#install">安装</a>
       <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub</a>
+      <a class="pill" href="#install">安装</a>
     </nav>
   </div>
 </header>
 
 <main>
-<section class="hero">
-  <div class="wrap">
-    <div>
-      <span class="eyebrow">清了没？</span>
-      <h1>拍很多，<br><mark>留几张</mark>。</h1>
-      <p class="lead">轻了相册是一个 AI 帮你挑照片的安卓 App。同一个地方拍了几十张，它替你挑出三五张精华；拍糊的、重复的、过期的截图，它先勾好。你只管扫一眼，点确认。删完，手机轻了，心也轻了。</p>
-      <div class="cta">
-        <a class="btn primary dl" href="download/qingle-album-v2.8.4.apk" download>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
-          下载安卓版
-        </a>
-        <a class="btn ghost" href="#install">怎么安装</a>
-      </div>
-      <p class="meta">v2.8.4 · 48 MB · 安卓 11 及以上 · 免费，不用注册，没有广告</p>
-      <div class="stats">
-        <div class="stat"><b>134 GB</b>作者手机腾出的空间</div>
-        <div class="stat"><b>不联网</b>照片不出手机</div>
-        <div class="stat"><b>开源</b>免费，没有广告</div>
-      </div>
+<section class="hero" id="hero">
+  <div class="wall" id="wall" aria-hidden="true"></div>
+  <div class="scrim"></div>
+  <div class="hero-in">
+    <p class="kicker">清了没？· AI 帮你挑照片的安卓相册</p>
+    <h1>拍很多，<br><em>留几张</em>。</h1>
+    <p class="lead">同一个地方拍了几十张，它替你挑出三五张精华；拍糊的、重复的、过期的截图，先帮你勾好。你只管扫一眼，点确认。删完，手机轻了，心也轻了。</p>
+    <div class="cta">
+      <a class="btn primary dl" href="download/qingle-album-v2.8.4.apk" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
+        下载安卓版
+      </a>
+      <a class="btn glass" href="#install">怎么安装</a>
     </div>
-    <div class="phone">
-      <img src="img/welcome.jpg" alt="欢迎使用轻了相册：每组只留最好的一张，每个场景留几张精华，照片不出手机" width="360" height="614">
-    </div>
+    <p class="meta">v2.8.4 · 48 MB · 安卓 11 及以上 · 免费，不用注册</p>
+    <ul class="hstats">
+      <li><b>自动分类</b></li>
+      <li><b>照片打分</b></li>
+      <li><b>本机处理</b></li>
+      <li><b>无广告</b></li>
+    </ul>
   </div>
+  <p class="wall-note">背后是木妈相册里的真实照片：带 ★ 的是挑出来的精华，变暗打勾的是先帮你勾好的</p>
 </section>
 
-<section class="alt">
-  <div class="wrap">
+<section id="promise">
+  <div class="wrap pgrid">
+    <div class="phone">
+      <img src="img/welcome.jpg" alt="欢迎使用轻了相册：每组只留最好的一张，每个场景留几张精华，照片不出手机" width="360" height="614" loading="lazy">
+    </div>
+    <div>
     <div class="sec-head">
       <p class="k">三个承诺</p>
       <h2>放心把相册交给它</h2>
@@ -329,10 +376,11 @@ footer .r{margin-left:auto}
         <p>收藏的照片和视频、证件、设为好评的截图，永远不会被建议删除。AI 只负责推荐，删不删由你决定。</p>
       </div>
     </div>
+    </div>
   </div>
 </section>
 
-<section id="features">
+<section id="features" class="alt">
   <div class="wrap">
     <div class="sec-head">
       <p class="k">它能做什么</p>
@@ -428,7 +476,7 @@ footer .r{margin-left:auto}
   </div>
 </section>
 
-<section id="name" class="alt">
+<section id="name">
   <div class="wrap">
     <div class="sec-head">
       <p class="k">名字的由来</p>
@@ -451,7 +499,7 @@ footer .r{margin-left:auto}
   </div>
 </section>
 
-<section id="install">
+<section id="install" class="alt">
   <div class="wrap">
     <div class="sec-head">
       <p class="k">安装</p>
@@ -514,7 +562,7 @@ footer .r{margin-left:auto}
   </div>
 </section>
 
-<section class="alt">
+<section id="faq">
   <div class="wrap">
     <div class="sec-head">
       <p class="k">常见问题</p>
@@ -529,7 +577,7 @@ footer .r{margin-left:auto}
   </div>
 </section>
 
-<section>
+<section id="author" class="alt">
   <div class="wrap">
     <div class="sec-head">
       <p class="k">关于作者 · 木妈</p>
@@ -583,6 +631,19 @@ footer .r{margin-left:auto}
     </aside>
   </div>
 </section>
+
+<section class="outro" id="get">
+  <div class="wrap">
+    <p class="kicker">每个月，它会问你一句</p>
+    <h2>这个月，相册<em>清了没</em>？</h2>
+    <p class="sub">挑照片交给它，删不删你说了算。</p>
+    <div class="cta">
+      <a class="btn primary dl" href="download/qingle-album-v2.8.4.apk" download>下载安卓版</a>
+      <a class="btn glass" href="#install">怎么安装</a>
+    </div>
+    <p class="meta">v2.8.4 · 免费，不用注册，没有广告</p>
+  </div>
+</section>
 </main>
 
 <footer>
@@ -603,9 +664,76 @@ footer .r{margin-left:auto}
 
 <script>
 (function(){
-  var header=document.getElementById('top');
-  function onScroll(){header.classList.toggle('scrolled',window.scrollY>4)}
-  window.addEventListener('scroll',onScroll,{passive:true});onScroll();
+  // 顶栏：还在深色首屏上时透明，滚过首屏变白
+  var header=document.getElementById('top'),hero=document.getElementById('hero');
+  function onScroll(){header.classList.toggle('solid',window.scrollY>hero.offsetHeight-64)}
+  window.addEventListener('scroll',onScroll,{passive:true});window.addEventListener('resize',onScroll);onScroll();
+
+  // 首屏照片墙：每一轮挑出几张精华（★），其余变暗打勾，像 App 里的“场景精选”
+  var wall=document.getElementById('wall'),tiles=[],cols=0,round=0,timer=null,visible=true;
+  var still=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function build(){
+    var w=hero.offsetWidth,h=hero.offsetHeight;
+    var c=w>1200?12:w>900?10:w>640?8:5;
+    var size=(w+(w>640?20:0))/c,r=Math.ceil((h+20)/size)+1;
+    if(c===cols&&tiles.length===c*r)return;
+    cols=c;wall.style.gridTemplateColumns='repeat('+c+',1fr)';wall.innerHTML='';tiles=[];
+    for(var y=0;y<r;y++)for(var x=0;x<c;x++){
+      var el=document.createElement('div');
+      // 打散排列，但和左边、上面、斜上方的格子不重复
+      var used=[],k=0,n;
+      if(x>0)used.push(tiles[tiles.length-1]._n);
+      if(y>0){used.push(tiles[tiles.length-c]._n);if(x>0)used.push(tiles[tiles.length-c-1]._n);if(x<c-1)used.push(tiles[tiles.length-c+1]._n)}
+      do{n=hash(x*131+y*977+k++)%9+1}while(used.indexOf(n)>=0);
+      el._n=n;el._x=x;el._y=y;
+      el.className='wt';
+      el.style.backgroundImage='url(img/wall-'+n+'.jpg)';
+      el.style.transitionDelay=(x*45+y*25)+'ms';
+      wall.appendChild(el);tiles.push(el);
+    }
+  }
+  function hash(v){v=(v^61)^(v>>>16);v=v+(v<<3);v=v^(v>>>4);v=Math.imul(v,0x27d4eb2d);return (v^(v>>>15))>>>0}
+  // 每轮挑几张精华：不压在文字、顶栏、底部说明上，也不挨着
+  function pick(){
+    round++;
+    var hr=hero.getBoundingClientRect(),cr={left:1e9,right:-1e9,top:1e9,bottom:-1e9},rg=document.createRange(),phone=hr.width<640;
+    // 文字实际占的范围：段落量文字本身，按钮和数字量每一个
+    Array.prototype.forEach.call(document.querySelectorAll('.hero-in>p,.hero-in>h1,.hero-in .cta>*,.hero-in .hstats>*'),function(n){
+      rg.selectNodeContents(n);var r=n.tagName==='P'||n.tagName==='H1'?rg.getBoundingClientRect():n.getBoundingClientRect();
+      cr.left=Math.min(cr.left,r.left);cr.right=Math.max(cr.right,r.right);cr.top=Math.min(cr.top,r.top);cr.bottom=Math.max(cr.bottom,r.bottom);
+    });
+    var ok=tiles.filter(function(el){
+      var t=el.getBoundingClientRect();
+      if(t.top<hr.top+72||t.bottom>hr.bottom-44)return false;
+      if(phone)return t.left>=hr.left-1&&t.right<=hr.right+1&&t.bottom<cr.top-8; // 手机上只在文字上方那一条里挑
+      if(t.left<hr.left+4||t.right>hr.right-4)return false;
+      return t.right<cr.left-16||t.left>cr.right+16||t.bottom<cr.top-16||t.top>cr.bottom+16;
+    }).sort(function(a,b){return hash(a._x*7+a._y*53+round*1009)-hash(b._x*7+b._y*53+round*1009)});
+    var want=Math.min(7,Math.max(2,Math.round(ok.length/4))),chosen=[];
+    ok.forEach(function(el){
+      if(chosen.length<want&&chosen.every(function(o){return Math.abs(o._x-el._x)>1||Math.abs(o._y-el._y)>1}))chosen.push(el);
+    });
+    tiles.forEach(function(el){var hit=chosen.indexOf(el)>=0;el.classList.toggle('pick',hit);el.classList.toggle('gone',!hit)});
+  }
+  function reset(){tiles.forEach(function(el){el.classList.remove('pick','gone')})}
+  function loop(){
+    clearTimeout(timer);
+    if(!visible||document.hidden)return;
+    pick();
+    timer=setTimeout(function(){reset();timer=setTimeout(loop,2200)},4200);
+  }
+  // 先让满屏照片停一下（拍很多），再开始挑；看不见首屏时暂停，省电
+  function start(delay){clearTimeout(timer);if(!still)timer=setTimeout(loop,delay)}
+  build();
+  if(still)pick();
+  else{
+    start(900);
+    if('IntersectionObserver' in window)new IntersectionObserver(function(es){
+      var v=es[0].isIntersecting;if(v&&!visible)start(600);if(!v)clearTimeout(timer);visible=v;
+    }).observe(hero);
+  }
+  var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){build();if(still)pick()},200)});
+  document.addEventListener('visibilitychange',function(){if(!document.hidden)start(600)});
 
   function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(toast._t);toast._t=setTimeout(function(){el.classList.remove('on')},1800)}
 
