@@ -59,11 +59,15 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: model.toast)
+        // 每次相册整理好，按能腾出多少重新预约每月提醒
+        .onReceive(model.$library) { lib in model.updateReminder(lib) }
         #if DEBUG
         // 模拟器测试用：-route similar 直接打开某一页
         .onAppear {
             let args = CommandLine.arguments
             if let i = args.firstIndex(of: "-route"), i + 1 < args.count, let r = Route(rawValue: args[i + 1]) { path = [r] }
+            // -reminderTest：不等相册整理，先用一组示例数字预约，15 秒后弹每月提醒
+            if args.contains("-reminderTest") { MonthlyReminder.update(count: 128, bytes: 3_276_800_000) { model.show("每月提醒你一次能腾出多少空间，请允许通知（设置里随时能关）") } }
         }
         #endif
     }
@@ -114,10 +118,30 @@ struct WelcomeView: View {
 
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.scenePhase) private var phase
     @State private var askReanalyze = false
+    @AppStorage(MonthlyReminder.key) private var monthly = true
+    @State private var notifDenied = false
 
     var body: some View {
         List {
+            Section {
+                Toggle(isOn: $monthly) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("每月提醒我清理")
+                        Text("能腾出 500 MB 以上时发一条通知").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                .tint(.brand)
+                .onChange(of: monthly) { _, _ in model.updateReminder(model.library) }
+                if monthly && notifDenied {
+                    Button("通知没打开，去系统设置里允许") {
+                        if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
+                    }
+                    .font(.footnote)
+                }
+            }
+            .task(id: phase) { notifDenied = await MonthlyReminder.denied() }
             Section {
                 Button("让保留过的照片重新参与建议") {
                     Store.shared.clearReviewed()
