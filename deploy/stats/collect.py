@@ -42,6 +42,7 @@ def conf() -> dict:
 def scan_logs():
     sizes = {f: os.path.getsize(os.path.join(DL_DIR, f)) for f in os.listdir(DL_DIR) if f.endswith(".apk")}
     dl = defaultdict(int)       # (day, ip, ua, file) -> bytes
+    jumps = defaultdict(set)    # day -> {(ip, ua, file)}：2026-10-13 起 /download/ 跳到 CDN（dl.nativeailab.cn），跳一次算下载一次
     views = defaultdict(set)    # day -> {(ip, ua)}
     wechat = defaultdict(set)
     device = defaultdict(Counter)
@@ -62,6 +63,8 @@ def scan_logs():
                 a = APK.match(req)
                 if a and status in ("200", "206"):
                     dl[(day, ip, ua, a.group(1))] += int(size)
+                elif a and status == "302":
+                    jumps[day].add((ip, ua, a.group(1)))
                 elif req.startswith(VIEW) and status in ("200", "304"):
                     key = (ip, ua)
                     if key not in views[day]:
@@ -77,6 +80,12 @@ def scan_logs():
             d["by_version"][f] = d["by_version"].get(f, 0) + 1
         elif b > 1_000_000:
             d["partial"] += 1
+    for day, js in jumps.items():
+        d = days.setdefault(day, {"done": 0, "partial": 0, "by_version": {}})
+        for _, _, f in js:
+            d["done"] += 1
+            d["by_version"][f] = d["by_version"].get(f, 0) + 1
+        d["cdn"] = len(js)
     for day, v in views.items():
         d = days.setdefault(day, {"done": 0, "partial": 0, "by_version": {}})
         d["visitors"] = len(v)
