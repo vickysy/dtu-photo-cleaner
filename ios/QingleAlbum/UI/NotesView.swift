@@ -53,6 +53,7 @@ struct NotesView: View {
                                 Text("挑几张").font(.subheadline).foregroundStyle(Color.accentText)
                                 Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(.tertiary)
                             }
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         ScrollView(.horizontal, showsIndicators: false) {
@@ -85,6 +86,7 @@ struct NotesView: View {
         }
         .background(Color.page)
         .navigationTitle("截图笔记")
+        .usagePage("截图笔记")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $share) { s in ShareSheet(items: s.items) }
         .fullScreenCover(item: $viewer) { v in

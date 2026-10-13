@@ -69,8 +69,14 @@ struct PhotoCell: View {
             }
             .overlay(alignment: .bottomTrailing) { SelectCircle(selected: selected, size: 22).padding(5) }
             .contentShape(Rectangle())
-            .onTapGesture(perform: onToggle)
-            .onLongPressGesture(perform: onOpen)
+            .onTapGesture {
+                Usage.add((selected ? "取消勾选." : "勾选.") + Usage.page)
+                onToggle()
+            }
+            .onLongPressGesture {
+                Usage.add("看大图")
+                onOpen()
+            }
     }
 }
 
@@ -93,6 +99,17 @@ struct Viewer: View {
     @Environment(\.dismiss) private var dismiss
     /// 往下拖的距离：拖够了就关掉（和“照片”App 一样）
     @State private var dragY: CGFloat = 0
+    /// 正在看的那张（左右翻页用）
+    @State private var pageId: String?
+
+    init(items: [MediaItem], index: Int, isMarked: ((String) -> Bool)? = nil, onToggle: ((String) -> Void)? = nil, actions: [ViewerAction] = []) {
+        self.items = items
+        _index = State(initialValue: index)
+        self.isMarked = isMarked
+        self.onToggle = onToggle
+        self.actions = actions
+        _pageId = State(initialValue: items.indices.contains(index) ? items[index].id : nil)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -102,6 +119,7 @@ struct Viewer: View {
                     Image(systemName: "xmark").font(.system(size: 16, weight: .bold)).foregroundStyle(.white)
                         .frame(width: 36, height: 36).background(Color.white.opacity(0.2), in: Circle())
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel("关闭")
                 Spacer()
@@ -111,13 +129,14 @@ struct Viewer: View {
                     Spacer()
                     if let isMarked, let onToggle {
                         let marked = isMarked(m.id)
-                        Button { onToggle(m.id) } label: {
+                        Button { Usage.add("大图里切换删留"); onToggle(m.id) } label: {
                             HStack(spacing: 6) {
                                 SelectCircle(selected: marked, size: 20)
                                 Text(marked ? "要删" : "留下").font(.subheadline.weight(.semibold)).foregroundStyle(.white)
                             }
                             .padding(.horizontal, 12).frame(height: 36)
                             .background(marked ? Color.danger : Color.white.opacity(0.2), in: Capsule())
+                            .contentShape(Capsule())
                         }
                     } else {
                         Color.clear.frame(width: 44, height: 44)
@@ -126,22 +145,28 @@ struct Viewer: View {
             }
             .padding(.horizontal, 8).frame(height: 52)
 
-            TabView(selection: $index) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { i, m in
-                    BigImage(item: m).tag(i)
+            // 左右翻页：用按需加载的横向列表（以前用 TabView，几百张时每张都要先建好，新系统上翻起来卡）
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 0) {
+                        ForEach(items, id: \.id) { m in
+                            BigImage(item: m).containerRelativeFrame([.horizontal, .vertical])
+                        }
+                    }
+                    .scrollTargetLayout()
+                    .background(PullDown(onChange: { dragY = $0 }, onEnd: { y, v in
+                        if y > 120 || v > 900 { dismiss() } else { withAnimation(.easeOut(duration: 0.2)) { dragY = 0 } }
+                    }))
                 }
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.paging)
+                .scrollPosition(id: $pageId)
+                .onAppear { if let pageId { proxy.scrollTo(pageId) } }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
             .offset(y: dragY)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 25)
-                    .onChanged { v in
-                        if v.translation.height > 0 && abs(v.translation.height) > abs(v.translation.width) { dragY = v.translation.height }
-                    }
-                    .onEnded { _ in
-                        if dragY > 120 { dismiss() } else { withAnimation(.easeOut(duration: 0.2)) { dragY = 0 } }
-                    }
-            )
+            .onChange(of: pageId) { _, id in
+                if let id, let i = items.firstIndex(where: { $0.id == id }) { index = i }
+            }
 
             if !actions.isEmpty && items.indices.contains(index) {
                 let id = items[index].id
@@ -153,6 +178,7 @@ struct Viewer: View {
                                 Text(a.label(id)).font(.caption).foregroundStyle(.white)
                             }
                             .frame(maxWidth: .infinity)
+                            .contentShape(Rectangle())
                         }
                     }
                 }
@@ -160,6 +186,75 @@ struct Viewer: View {
             }
         }
         .background(Color.black.opacity(1 - min(0.6, Double(dragY) / 400)).ignoresSafeArea())
+    }
+}
+
+/**
+ 往下拖关大图：手势装在左右翻页的列表（UIScrollView）上。先竖着往下拖才算，横着动就是翻页；
+ 翻页先等它判断完，所以两个不会抢（以前用 SwiftUI 的拖动手势叠在翻页上，新系统上左右滑会卡住）。
+ */
+private struct PullDown: UIViewRepresentable {
+    let onChange: (CGFloat) -> Void
+    let onEnd: (_ distance: CGFloat, _ speed: CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> Host {
+        let v = Host()
+        v.isUserInteractionEnabled = false
+        v.coordinator = context.coordinator
+        return v
+    }
+
+    func updateUIView(_ v: Host, context: Context) {
+        context.coordinator.onChange = onChange
+        context.coordinator.onEnd = onEnd
+        if v.window != nil { context.coordinator.attach(v) }
+    }
+
+    final class Host: UIView {
+        weak var coordinator: Coordinator?
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            if window != nil { coordinator?.attach(self) }
+        }
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onChange: (CGFloat) -> Void = { _ in }
+        var onEnd: (CGFloat, CGFloat) -> Void = { _, _ in }
+        private weak var scrollView: UIScrollView?
+        private var pan: UIPanGestureRecognizer?
+
+        func attach(_ host: UIView) {
+            var v = host.superview
+            while let s = v, !(s is UIScrollView) { v = s.superview }
+            guard let sv = v as? UIScrollView, sv !== scrollView else { return }
+            if let pan { pan.view?.removeGestureRecognizer(pan) }
+            let p = UIPanGestureRecognizer(target: self, action: #selector(handle(_:)))
+            p.maximumNumberOfTouches = 1
+            p.delegate = self
+            sv.addGestureRecognizer(p)
+            sv.panGestureRecognizer.require(toFail: p)
+            pan = p
+            scrollView = sv
+        }
+
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let p = g as? UIPanGestureRecognizer else { return false }
+            let t = p.translation(in: nil)
+            return t.y > 0 && t.y > abs(t.x) * 1.2
+        }
+
+        // 用窗口坐标：大图跟着手指往下移，用它自己的坐标会越算越少
+        @objc private func handle(_ p: UIPanGestureRecognizer) {
+            let y = max(0, p.translation(in: nil).y)
+            switch p.state {
+            case .changed: onChange(y)
+            case .ended, .cancelled, .failed: onEnd(y, p.velocity(in: nil).y)
+            default: break
+            }
+        }
     }
 }
 

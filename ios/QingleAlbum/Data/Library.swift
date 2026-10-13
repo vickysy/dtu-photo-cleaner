@@ -103,6 +103,12 @@ struct Library {
 
     /// 所有建议删除的加起来（同一张只算一次）：张数和字节数。大视频不预选，不算
     func reclaimable() -> (count: Int, bytes: Int64) {
+        let ids = suggestedIds()
+        return (ids.count, ids.reduce(0) { $0 + (byId[$1]?.size ?? 0) })
+    }
+
+    /// App 推荐删的（打开各页时默认勾上的那些）
+    func suggestedIds() -> Set<String> {
         var ids = Set<String>()
         groups.forEach { g in g.suggestedDelete.forEach { ids.insert($0.photo.id) } }
         scenes.forEach { sc in let keep = sc.keepIds; sc.members.forEach { if !keep.contains($0.id) { ids.insert($0.id) } } }
@@ -110,7 +116,7 @@ struct Library {
         oldScreenshots().forEach { ids.insert($0.id) }
         videoSuggest.forEach { if $0.confident { ids.insert($0.item.id) } }
         videoScenes.forEach { sc in let keep = sc.keepIds; sc.members.forEach { if !keep.contains($0.id) { ids.insert($0.id) } } }
-        return (ids.count, ids.reduce(0) { $0 + (byId[$1]?.size ?? 0) })
+        return ids
     }
 
     static func build(images: [MediaItem], videos: [MediaItem], settings: Settings, taste: Taste) -> Library {
@@ -121,7 +127,7 @@ struct Library {
         var infos: [PhotoInfo] = []
         var cameraInfos: [PhotoInfo] = []
         for m in images where Analyzer.eligible(m) {
-            guard let row = stored[m.id], row.mod == m.modified, row.ver == Analyzer.version else { unanalyzed += 1; continue }
+            guard let row = stored[m.id], m.sameContent(asOf: row.mod), row.ver == Analyzer.version else { unanalyzed += 1; continue }
             guard let f = row.feat.features else { continue }
             features[m.id] = f
             let info = PhotoInfo(id: m.id, timeMs: m.timeMs, width: m.width, height: m.height, size: m.size, favorite: m.favorite,
@@ -163,7 +169,7 @@ struct Library {
         var videosUnanalyzed = 0
         var vinfos: [VideoInfo] = []
         for m in videos where Analyzer.videoEligible(m) {
-            guard let r = vstored[m.id], r.mod == m.modified, r.ver == Analyzer.videoVersion else { videosUnanalyzed += 1; continue }
+            guard let r = vstored[m.id], m.sameContent(asOf: r.mod), r.ver == Analyzer.videoVersion else { videosUnanalyzed += 1; continue }
             vinfos.append(VideoInfo(id: m.id, timeMs: m.timeMs, durationMs: m.durationMs, size: m.size, width: m.width, height: m.height,
                                     camera: m.isCameraShot, favorite: m.favorite, f: r.feat))
         }
@@ -189,7 +195,7 @@ struct Library {
         var shotTexts: [String: String] = [:]
         var textsPending = 0
         for m in images where Analyzer.textEligible(m, utility: stored[m.id]?.feat.utility) {
-            guard let t = texts[m.id], t.mod == m.modified, t.ver == Analyzer.textVersion else { textsPending += 1; continue }
+            guard let t = texts[m.id], m.sameContent(asOf: t.mod), t.ver == Analyzer.textVersion else { textsPending += 1; continue }
             let paper = stored[m.id]?.feat.features.map { ScreenText.paperFraction($0.color) } ?? -1
             if let k = ScreenText.classify(t.row.text, codes: t.row.codes, layout: t.row.layout, camera: m.isCameraShot, paper: paper) {
                 docKinds[m.id] = k

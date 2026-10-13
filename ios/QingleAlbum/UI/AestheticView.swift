@@ -7,6 +7,7 @@ struct AestheticView: View {
     @State private var selected = Set<String>()
     @State private var viewer: ViewerTarget?
     @State private var confirm = false
+    @State private var drag = DragSelector()
 
     var body: some View {
         let lib = model.library
@@ -22,7 +23,7 @@ struct AestheticView: View {
                     Text("最差的在前").tag(false)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 8)
-                Footnote(text: "\(Fmt.count(items.count)) 张相机照片按构图、色彩、清晰度打了分（iOS 自带的美感评估，换算成 1–10）。\(low) 张 4.3 分及以下。没有预选，长按看大图，自己挑着删。")
+                Footnote(text: "\(Fmt.count(items.count)) 张相机照片按构图、色彩、清晰度打了分（iOS 自带的美感评估，换算成 1–10）。\(low) 张 4.3 分及以下。没有预选，长按看大图，自己挑着删；按住横着一划可以连续选。")
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                     ForEach(Array(scored.enumerated()), id: \.element.0.id) { i, e in
                         let r = aesRounded(e.1)
@@ -33,13 +34,16 @@ struct AestheticView: View {
                                            bg: r <= aesLow ? Color.danger.opacity(0.9) : r >= aesHigh ? Color.brand.opacity(0.95) : .black.opacity(0.5))
                                     .padding(4)
                             }
+                            .dragSelectCell(e.0.id, drag)
                     }
                 }
             }
             .padding(.bottom, 20)
+            .dragSelect(drag, ids: { items.map { $0.id } }, selection: $selected)
         }
         .background(Color.page)
         .navigationTitle("美感排行")
+        .usagePage("美感排行")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             if !chosen.isEmpty {

@@ -2,7 +2,7 @@ import Photos
 import SwiftUI
 
 enum Route: String, Hashable {
-    case similar, scenes, bad, screenshots, bigVideos, settings, recent, aesthetic, videos, videoScenes, compress, docs, notes
+    case similar, scenes, bad, screenshots, bigVideos, settings, recent, aesthetic, videos, videoScenes, compress, docs, notes, report
 }
 
 /// 首页上的一类建议
@@ -61,9 +61,11 @@ struct HomeView: View {
     @Binding var path: [Route]
 
     var body: some View {
+        let mark = Diag.begin("首页 body")
         let lib = model.library
         let cats = lib.map(categories) ?? []
         let next = nextCategory(cats)
+        let _ = Diag.end("首页 body", mark)
         ScrollView {
             VStack(spacing: 22) {
                 BrandTitle()
@@ -117,6 +119,7 @@ struct HomeView: View {
             }
         }
         .refreshable { model.refresh() }
+        .usagePage("首页")
     }
 }
 
@@ -138,6 +141,7 @@ private struct AlbumShortcuts: View {
     let openAll: () -> Void
 
     var body: some View {
+        let _ = Diag.log("分类相册那一排 重算")
         let groups = docGroups.map { g in (g, lib.docKinds.values.filter { g.kinds.contains($0) }.count) }.filter { $0.1 > 0 }
         let praised = praise.filter { lib.byId[$0] != nil }.count
         VStack(alignment: .leading, spacing: 10) {
@@ -158,7 +162,11 @@ private struct AlbumShortcuts: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 16)
+                // 图标之间的空隙也算这一排：手指落在空隙里时，横着滑也是滑这一排
+                .contentShape(Rectangle())
             }
+            // 一屏放得下就不用左右滑，也不弹来弹去
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
     }
 
@@ -171,6 +179,7 @@ private struct AlbumShortcuts: View {
             Text(count.map { "\($0) 张" } ?? " ").font(.caption2).foregroundStyle(.secondary)
         }
         .frame(width: 76)
+        .contentShape(Rectangle())
     }
 }
 
@@ -284,6 +293,21 @@ private struct StorageCard: View {
 
 // ---------- 相册还能轻多少 ----------
 
+/// 分析进度的数字和进度条：只有这一块跟着进度刷新
+private struct AnalyzingNumbers: View {
+    @ObservedObject var live: LiveProgress
+
+    var body: some View {
+        let p = live.progress
+        VStack(alignment: .leading, spacing: 0) {
+            Text(p.label).font(.subheadline).foregroundStyle(.secondary)
+            Text(p.total > 0 ? "\(Int(p.fraction * 100))%" : "…").font(.system(size: 56, weight: .bold)).tracking(-1)
+            if p.total > 0 { Text("\(Fmt.count(p.done)) / \(Fmt.count(p.total))").font(.subheadline).foregroundStyle(.secondary) }
+            ProgressView(value: p.fraction).tint(.brand).padding(.top, 14)
+        }
+    }
+}
+
 /// 第二张卡：相册还能轻多少 + 开始整理；分析中显示进度
 private struct Hero: View {
     @EnvironmentObject var model: AppModel
@@ -311,14 +335,10 @@ private struct Hero: View {
     }
 
     private var analyzing: some View {
-        let p = model.progress
-        return VStack(alignment: .leading, spacing: 0) {
-            Text(p.label).font(.subheadline).foregroundStyle(.secondary)
-            Text(p.total > 0 ? "\(Int(p.fraction * 100))%" : "…").font(.system(size: 56, weight: .bold)).tracking(-1)
-            if p.total > 0 { Text("\(Fmt.count(p.done)) / \(Fmt.count(p.total))").font(.subheadline).foregroundStyle(.secondary) }
-            ProgressView(value: p.fraction).tint(.brand).padding(.top, 14)
+        VStack(alignment: .leading, spacing: 0) {
+            AnalyzingNumbers(live: model.live)
             HStack {
-                Text("全在手机里算，照片不上传。分析时别锁屏。").font(.footnote).foregroundStyle(.secondary)
+                Text("全在手机里算，照片不上传。别锁屏；切到别的 App 会暂停，回来自动接着分析，做完的不会重来。").font(.footnote).foregroundStyle(.secondary)
                 Spacer()
                 Button("暂停") { model.pauseAnalysis() }.font(.subheadline).foregroundStyle(Color.accentText)
             }

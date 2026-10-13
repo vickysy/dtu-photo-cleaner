@@ -12,6 +12,7 @@ struct SimilarView: View {
     @State private var initialized: Set<String> = []
     @State private var viewer: ViewerTarget?
     @State private var confirmAll = false
+    @State private var drag = DragSelector()
 
     var body: some View {
         let all = model.library?.groups ?? []
@@ -25,19 +26,22 @@ struct SimilarView: View {
                     Text("角度不同 \(all.filter { !$0.nearIdentical }.count)").tag(false)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 8)
-                Footnote(text: near ? "连拍、重复保存的，每组留最清楚、最好看的一张（绿色标签），其余已经勾上。"
-                    : "同一个地方换了角度拍的。这类最容易判断错（比如不同的人、不同页的文件），删之前看一眼。")
+                Footnote(text: near ? "连拍、重复保存的，每组留最清楚、最好看的一张（绿色标签），其余已经勾上。按住横着一划可以连续选。"
+                    : "同一个地方换了角度拍的。这类最容易判断错（比如不同的人、不同页的文件），删之前看一眼。按住横着一划可以连续选。")
                 if groups.isEmpty {
                     Text("这一类没有了").foregroundStyle(.secondary).padding(.top, 60)
                 }
                 ForEach(groups) { g in
-                    GroupCard(group: g, selected: $selected, open: { items, i in viewer = ViewerTarget(items: items, start: i) })
+                    GroupCard(group: g, selected: $selected, drag: drag, open: { items, i in viewer = ViewerTarget(items: items, start: i) })
                 }
             }
             .padding(.bottom, 20)
+            // 跨组也能一路划下去（和安卓版一样），每组的“删除”只删自己组里勾上的
+            .dragSelect(drag, ids: { groups.flatMap { $0.members.map { $0.photo.id } } }, selection: $selected)
         }
         .background(Color.page)
         .navigationTitle("相似照片")
+        .usagePage("相似照片")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             if !groups.isEmpty {
@@ -79,6 +83,7 @@ private struct GroupCard: View {
     @EnvironmentObject var model: AppModel
     let group: RankedGroup
     @Binding var selected: Set<String>
+    let drag: DragSelector
     let open: ([MediaItem], Int) -> Void
 
     var body: some View {
@@ -97,6 +102,7 @@ private struct GroupCard: View {
                         PhotoCell(item: m, selected: selected.contains(m.id), tag: rp.tags.first,
                                   onToggle: { toggle(m.id) }, onOpen: { open(items, i) })
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .dragSelectCell(m.id, drag)
                     }
                 }
             }

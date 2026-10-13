@@ -35,6 +35,8 @@ struct CardBackground: ViewModifier {
         content
             .background(Color.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(Color.cardOutline, lineWidth: 1))
+            // 整张卡都算能点：画上去的底色不算，卡片做成按钮时只有字和图标能点，点空白处没反应（iOS 27 上用手机右边的手指最明显）
+            .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
     }
 }
 
@@ -95,6 +97,7 @@ struct PrimaryButton: View {
             Text(title).font(.headline).foregroundStyle(enabled ? .white : .secondary)
                 .frame(maxWidth: .infinity).frame(height: 50)
                 .background(enabled ? color : Color.fillSoft, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain).disabled(!enabled)
     }
@@ -113,6 +116,7 @@ struct CapsuleButton: View {
                 .foregroundStyle(!enabled ? Color.secondary : filled ? Color.white : color)
                 .padding(.horizontal, 16).frame(height: 36)
                 .background(!enabled ? Color.fillSoft : filled ? color : color.opacity(0.12), in: Capsule())
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain).disabled(!enabled)
     }

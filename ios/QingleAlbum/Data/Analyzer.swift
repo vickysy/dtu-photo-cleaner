@@ -32,7 +32,7 @@ enum Analyzer {
 
     static func needsWork(_ m: MediaItem, _ stored: [String: Store.FeatRow]) -> Bool {
         guard let r = stored[m.id] else { return true }
-        return r.mod != m.modified || r.ver != version
+        return !m.sameContent(asOf: r.mod) || r.ver != version
     }
 
     /// 读图、算特征、跑 Vision 都是阻塞的，放在自己的线程上做（不能占着 Swift 并发的共享线程，Vision 内部还要用线程）
@@ -40,15 +40,27 @@ enum Analyzer {
 
     private static let parallelQueue = DispatchQueue(label: "analyze.parallel", qos: .utility, attributes: .concurrent)
 
-    /// 同时最多做 [width] 张（每张都要加载 Vision 模型，同时太多 iPhone 内存吃不消），做完才返回
-    private static func parallel(_ count: Int, width: Int, _ body: @escaping (Int) -> Void) {
+    private static let watchQueue = DispatchQueue(label: "analyze.watch", qos: .utility, attributes: .concurrent)
+
+    /**
+     同时最多做 [width] 张（每张都要加载 Vision 模型，同时太多 iPhone 内存吃不消），全部做完或超时才返回。
+     某一张卡住（文件坏了、iCloud 占位文件读不出来）超过 [timeout] 秒就不等它了，让出位置给下一张——
+     不然一张卡住整批都停住（安卓在 OPPO 上就出过：进度停在 1,008 不动）。卡住的那张结果是空的，下次跳过。
+     [name] 是这一步叫什么（照片、视频、认字），卡住跳过的张数记进使用报告。
+     */
+    private static func parallel(_ count: Int, width: Int, timeout: TimeInterval, name: String, _ body: @escaping (Int) -> Void) {
         let group = DispatchGroup()
         let slots = DispatchSemaphore(value: width)
         for i in 0..<count {
             slots.wait()
             group.enter()
+            let finished = DispatchSemaphore(value: 0)
             parallelQueue.async {
                 body(i)
+                finished.signal()
+            }
+            watchQueue.async {
+                if finished.wait(timeout: .now() + timeout) == .timedOut { Usage.add("卡住跳过.\(name)") }
                 slots.signal()
                 group.leave()
             }
@@ -68,11 +80,12 @@ enum Analyzer {
                 workQueue.async {
                     var out = [StoredFeat?](repeating: nil, count: chunk.count)
                     let lock = NSLock()
-                    parallel(chunk.count, width: 3) { i in
+                    parallel(chunk.count, width: 3, timeout: 20, name: "照片") { i in
                         let r = autoreleasepool { analyze(chunk[i]) }
                         lock.lock(); out[i] = r; lock.unlock()
                     }
-                    c.resume(returning: chunk.indices.map { (chunk[$0].id, chunk[$0].modified, out[$0] ?? StoredFeat()) })
+                    lock.lock(); let got = out; lock.unlock()
+                    c.resume(returning: chunk.indices.map { (chunk[$0].id, chunk[$0].modified, got[$0] ?? StoredFeat()) })
                 }
             }
             Store.shared.putFeatures(rows, ver: version)
@@ -183,7 +196,7 @@ enum Analyzer {
 
     static func videoNeedsWork(_ m: MediaItem, _ stored: [String: Store.VideoRow]) -> Bool {
         guard let r = stored[m.id] else { return true }
-        return r.mod != m.modified || r.ver != videoVersion
+        return !m.sameContent(asOf: r.mod) || r.ver != videoVersion
     }
 
     /// 视频抽帧：每个视频抽 5 帧（不到 3 秒的抽 1 帧），用和照片一样的方法判断黑、纯色、糊
@@ -197,11 +210,12 @@ enum Analyzer {
                 workQueue.async {
                     var out = [VideoFeatures?](repeating: nil, count: chunk.count)
                     let lock = NSLock()
-                    parallel(chunk.count, width: 2) { i in
+                    parallel(chunk.count, width: 2, timeout: 120, name: "视频") { i in
                         let r = autoreleasepool { analyzeVideo(chunk[i]) }
                         lock.lock(); out[i] = r; lock.unlock()
                     }
-                    c.resume(returning: chunk.indices.map { (chunk[$0].id, chunk[$0].modified, out[$0] ?? .unreadable) })
+                    lock.lock(); let got = out; lock.unlock()
+                    c.resume(returning: chunk.indices.map { (chunk[$0].id, chunk[$0].modified, got[$0] ?? .unreadable) })
                 }
             }
             Store.shared.putVideos(rows, ver: videoVersion)
@@ -290,7 +304,7 @@ enum Analyzer {
 
     static func textNeedsWork(_ m: MediaItem, _ texts: [String: (mod: Double, ver: Int, row: Store.TextRow)]) -> Bool {
         guard let t = texts[m.id] else { return true }
-        return t.mod != m.modified || t.ver != textVersion
+        return !m.sameContent(asOf: t.mod) || t.ver != textVersion
     }
 
     static func runTexts(_ items: [MediaItem], onProgress: @escaping (Int, Int) -> Void) async {
@@ -303,11 +317,12 @@ enum Analyzer {
                 workQueue.async {
                     var out = [Store.TextRow?](repeating: nil, count: chunk.count)
                     let lock = NSLock()
-                    parallel(chunk.count, width: 2) { i in
+                    parallel(chunk.count, width: 2, timeout: 30, name: "认字") { i in
                         let r = autoreleasepool { recognize(chunk[i]) }
                         lock.lock(); out[i] = r; lock.unlock()
                     }
-                    c.resume(returning: chunk.indices.map { (chunk[$0].id, chunk[$0].modified, out[$0] ?? Store.TextRow(text: "", codes: [], layout: nil)) })
+                    lock.lock(); let got = out; lock.unlock()
+                    c.resume(returning: chunk.indices.map { (chunk[$0].id, chunk[$0].modified, got[$0] ?? Store.TextRow(text: "", codes: [], layout: nil)) })
                 }
             }
             Store.shared.putTexts(rows, ver: textVersion)

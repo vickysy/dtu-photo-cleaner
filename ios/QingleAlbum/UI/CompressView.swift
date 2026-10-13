@@ -10,6 +10,7 @@ struct CompressView: View {
     @State private var initialized = false
     @State private var viewer: ViewerTarget?
     @State private var confirmKeepAll = false
+    @State private var drag = DragSelector()
 
     var body: some View {
         let lib = model.library
@@ -45,19 +46,22 @@ struct CompressView: View {
 
                 Text("可以压缩的").font(.title3.weight(.semibold)).padding(.horizontal, 20).padding(.top, 4)
                 Footnote(text: candidates.isEmpty ? "没有值得压的视频了：1080p 拍的视频本来就不大。"
-                    : "\(candidates.count) 个视频转成 1080p H.265 能省 \(Fmt.bytes(lib?.compressSaving ?? 0))，手机上看几乎没区别。按能省的从多到少排，默认勾了最省的 10 个。收藏的视频不压。")
+                    : "\(candidates.count) 个视频转成 1080p H.265 能省 \(Fmt.bytes(lib?.compressSaving ?? 0))，手机上看几乎没区别。按能省的从多到少排，默认勾了最省的 10 个，按住横着一划可以连续选。收藏的视频不压。")
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                     ForEach(Array(candidates.enumerated()), id: \.element.id) { i, c in
                         PhotoCell(item: c.item, selected: selected.contains(c.id), tag: "省 \(Fmt.bytes(c.saving))",
                                   onToggle: { toggle(c.id) },
                                   onOpen: { viewer = ViewerTarget(items: candidates.map { $0.item }, start: i) })
+                            .dragSelectCell(c.id, drag)
                     }
                 }
             }
             .padding(.vertical, 8)
+            .dragSelect(drag, ids: { candidates.map { $0.id } }, selection: $selected)
         }
         .background(Color.page)
         .navigationTitle("压缩视频")
+        .usagePage("压缩视频")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             if !candidates.isEmpty && model.compressing == nil {

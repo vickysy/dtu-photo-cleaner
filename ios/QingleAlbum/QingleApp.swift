@@ -6,14 +6,22 @@ struct QingleApp: App {
     @StateObject private var model = AppModel()
     @Environment(\.scenePhase) private var phase
 
+    init() {
+        Usage.launched()
+        Usage.watchMainThread()
+        Diag.start()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(model)
                 .tint(.accentText)
-                .onAppear { model.start() }
+                .onAppear { model.start(); Usage.foreground(true) }
                 .onChange(of: phase) { _, p in
                     if p == .active { model.start() }
+                    // 记下是不是在前台：下次打开时还是“在前台”，说明上次是闪退
+                    if p != .inactive { Usage.foreground(p == .active) }
                 }
         }
     }
@@ -43,6 +51,7 @@ struct RootView: View {
                             case .compress: CompressView()
                             case .docs: DocsView()
                             case .notes: NotesView()
+                            case .report: ReportView()
                             }
                         }
                 }
@@ -144,6 +153,7 @@ struct SettingsView: View {
             .task(id: phase) { notifDenied = await MonthlyReminder.denied() }
             Section {
                 Button("让保留过的照片重新参与建议") {
+                    Usage.add("让保留过的重新参与建议")
                     Store.shared.clearReviewed()
                     model.refresh()
                     model.show("保留过的照片会重新出现在建议里")
@@ -151,11 +161,22 @@ struct SettingsView: View {
                 Button("重新分析全部照片", role: .destructive) { askReanalyze = true }
             }
             Section {
+                NavigationLink(value: Route.report) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("发送使用报告")
+                        Text("帮作者改进：只有使用次数，没有照片").font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+            } header: {
+                Text("参与测试")
+            }
+            Section {
                 Text("轻了相册 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")\n所有分析都在手机里完成，照片不会离开手机。删除都要经过系统确认，删掉的在「照片」的「最近删除」里放 30 天。\n美感评分用的是 iOS 自带的图像美感评估。")
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
         .navigationTitle("设置")
+        .usagePage("设置")
         .navigationBarTitleDisplayMode(.inline)
         .alert("重新分析全部照片？", isPresented: $askReanalyze) {
             Button("取消", role: .cancel) {}

@@ -17,6 +17,7 @@ struct GridReviewView: View {
     @State private var seen = Set<String>()
     @State private var viewer: ViewerTarget?
     @State private var confirm = false
+    @State private var drag = DragSelector()
 
     private var title: String {
         switch kind {
@@ -29,9 +30,9 @@ struct GridReviewView: View {
 
     private var note: String {
         switch kind {
-        case .bad: return "拍糊的、太暗的、误拍的纯色画面。背景虚化（人像模式）的照片只要主体清楚就不算糊。“可能模糊”的没有勾，长按看大图再决定。"
-        case .screenshots: return "超过 \(model.settings.screenshotDays) 天的截图已经勾选；取件码、验证码、付款码这类用完就没用的，3 天前的就勾上；证件永远不勾。"
-        case .bigVideos: return "超过 \(model.settings.bigVideoMB) MB 的视频，从大到小排。都没勾，长按播放看一眼再决定。"
+        case .bad: return "拍糊的、太暗的、误拍的纯色画面。背景虚化（人像模式）的照片只要主体清楚就不算糊。“可能模糊”的没有勾，长按看大图再决定。按住照片横着一划可以连续选。"
+        case .screenshots: return "超过 \(model.settings.screenshotDays) 天的截图已经勾选；取件码、验证码、付款码这类用完就没用的，3 天前的就勾上；证件永远不勾。按住横着一划可以连续选。"
+        case .bigVideos: return "超过 \(model.settings.bigVideoMB) MB 的视频，从大到小排。都没勾，长按播放看一眼再决定；按住横着一划可以连续选。"
         case .videos: return "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，长按播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里。"
         }
     }
@@ -66,13 +67,16 @@ struct GridReviewView: View {
                     ForEach(Array(list.enumerated()), id: \.element.0.id) { i, e in
                         PhotoCell(item: e.0, selected: selected.contains(e.0.id), tag: e.1,
                                   onToggle: { toggle(e.0.id) }, onOpen: { viewer = ViewerTarget(items: items, start: i) })
+                            .dragSelectCell(e.0.id, drag)
                     }
                 }
             }
             .padding(.bottom, 20)
+            .dragSelect(drag, ids: { entries.map { $0.0.id } }, selection: $selected)
         }
         .background(Color.page)
         .navigationTitle(title)
+        .usagePage(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

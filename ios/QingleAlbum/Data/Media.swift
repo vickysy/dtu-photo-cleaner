@@ -8,6 +8,8 @@ struct MediaItem: Identifiable, Hashable {
     let timeMs: Int64
     /// 修改时间（编辑过就要重新分析）
     let modified: Double
+    /// 编辑过（裁剪、滤镜、剪视频）
+    let edited: Bool
     let width: Int
     let height: Int
     let isVideo: Bool
@@ -21,6 +23,13 @@ struct MediaItem: Identifiable, Hashable {
     let lng: Double?
 
     var maxSide: Int { max(width, height) }
+
+    /**
+     以前在 [mod] 那个修改时间分析过，现在的内容还是不是那时的样子。
+     没编辑过的照片内容不会变——系统自己也会改修改时间（升级系统后会把整个相册重新整理一遍），
+     只看修改时间的话，分析过的会被当成新照片一遍遍重新分析，App 一直忙、点不动。编辑过的才看修改时间。
+     */
+    func sameContent(asOf mod: Double) -> Bool { mod == modified || !edited }
     /// 相机拍的：iPhone 相机照片最长边都在 3000 以上；存下来的微信图、表情包、网图一般小得多
     /// 照片还要是相机的比例（4:3、16:9、1:1）：存下来的别人的截图、长图也很大，但比例细长
     /// （视频：iPhone 拍的至少 1080p，微信存下来的多半更小）
@@ -43,6 +52,7 @@ enum PhotoSource {
         opts.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         opts.includeAssetSourceTypes = [.typeUserLibrary, .typeiTunesSynced]
         let result = PHAsset.fetchAssets(with: opts)
+        latest.set(result)
         let cached = Store.shared.loadSizes()
         var newSizes: [(id: String, mod: Double, size: Int64)] = []
         var images: [MediaItem] = []
@@ -53,7 +63,8 @@ enum PhotoSource {
             let id = a.localIdentifier
             let mod = (a.modificationDate ?? a.creationDate ?? .distantPast).timeIntervalSince1970
             var size: Int64
-            if let c = cached[id], c.mod == mod { size = c.size } else {
+            let edited = a.hasAdjustments
+            if let c = cached[id], c.mod == mod || !edited { size = c.size } else {
                 size = fileSize(a)
                 newSizes.append((id, mod, size))
             }
@@ -61,7 +72,7 @@ enum PhotoSource {
             let item = MediaItem(
                 id: id, asset: a,
                 timeMs: Int64(((a.creationDate ?? .distantPast).timeIntervalSince1970 * 1000).rounded()),
-                modified: mod, width: a.pixelWidth, height: a.pixelHeight,
+                modified: mod, edited: edited, width: a.pixelWidth, height: a.pixelHeight,
                 isVideo: a.mediaType == .video,
                 isScreenshot: a.mediaSubtypes.contains(.photoScreenshot),
                 isScreenRecording: a.mediaType == .video && a.mediaSubtypes.contains(.videoScreenRecording),
@@ -76,6 +87,32 @@ enum PhotoSource {
         return (images, videos)
     }
 
+    /// 上次读相册用的查询结果：相册变了的时候拿它算出到底变了什么
+    static let latest = FetchHolder()
+
+    /**
+     相册变了，要不要重新读：有新照片、删了照片、改了收藏、编辑了才要。
+     系统自己整理相册（升级系统后会持续好几天）只改修改时间，不用管——以前每次都重读整个相册，App 一直卡。
+     在系统通知的那个线程上调。
+     */
+    static func needsReload(_ change: PHChange) -> Bool {
+        guard let before = latest.get(), let d = change.changeDetails(for: before) else { return true }
+        latest.set(d.fetchResultAfterChanges)
+        guard d.hasIncrementalChanges, d.insertedObjects.isEmpty, d.removedObjects.isEmpty, !d.hasMoves else { return true }
+        let after = d.fetchResultAfterChanges
+        var relevant = false
+        d.changedIndexes?.forEach { i in
+            guard !relevant, i < after.count, i < before.count else { return }
+            let a = after.object(at: i), b = before.object(at: i)
+            if a.localIdentifier != b.localIdentifier || a.isFavorite != b.isFavorite || a.hasAdjustments != b.hasAdjustments
+                || a.pixelWidth != b.pixelWidth || a.pixelHeight != b.pixelHeight
+                || (a.hasAdjustments && a.modificationDate != b.modificationDate) {
+                relevant = true
+            }
+        }
+        return relevant
+    }
+
     /// 这张照片/视频一共占多少空间：所有资源（原图、编辑后的、实况照片的视频）加起来
     static func fileSize(_ a: PHAsset) -> Int64 {
         var total: Int64 = 0
@@ -84,4 +121,12 @@ enum PhotoSource {
         }
         return total
     }
+}
+
+/// 多个线程都要读写的“上次的查询结果”
+final class FetchHolder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: PHFetchResult<PHAsset>?
+    func get() -> PHFetchResult<PHAsset>? { lock.lock(); defer { lock.unlock() }; return value }
+    func set(_ v: PHFetchResult<PHAsset>) { lock.lock(); value = v; lock.unlock() }
 }

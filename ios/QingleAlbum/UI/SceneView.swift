@@ -12,6 +12,7 @@ struct SceneListView: View {
     @State private var initialized: Set<String> = []
     @State private var viewer: ViewerTarget?
     @State private var confirmAll = false
+    @State private var drag = DragSelector()
 
     private func scene(_ sc: PhotoScene) -> PhotoScene {
         guard let k = keepOverride[sc.id], k != sc.keepCount else { return sc }
@@ -24,11 +25,11 @@ struct SceneListView: View {
         let chosenBytes = chosenIds.reduce(Int64(0)) { $0 + (model.library?.byId[$1]?.size ?? 0) }
         ScrollView {
             VStack(spacing: 18) {
-                Footnote(text: "同一个地方连续拍了很多张时，帮你挑几张精华：构图好看、拍得清楚、没人闭眼，而且尽量是不同的画面。其余已经勾选。只点这个场景自己的“删除”，不会动别的场景。")
+                Footnote(text: "同一个地方连续拍了很多张时，帮你挑几张精华：构图好看、拍得清楚、没人闭眼，而且尽量是不同的画面。其余已经勾选，按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
                     .padding(.top, 8)
                 if scenes.isEmpty { Text("场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
                 ForEach(scenes) { sc in
-                    SceneCard(scene: sc, selected: $selected,
+                    SceneCard(scene: sc, selected: $selected, drag: drag,
                               setKeep: { k in
                                   keepOverride[sc.id] = k
                                   let rebuilt = SceneDetector.build(sc.members, keep: k)
@@ -40,9 +41,11 @@ struct SceneListView: View {
                 }
             }
             .padding(.bottom, 20)
+            .dragSelect(drag, ids: { scenes.flatMap(displayIds) }, selection: $selected)
         }
         .background(Color.page)
         .navigationTitle("场景精选")
+        .usagePage("场景精选")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             if !scenes.isEmpty {
@@ -79,20 +82,23 @@ struct SceneListView: View {
     }
 }
 
+/// 卡片里的先后顺序：精华在前（按推荐顺序），然后是收藏的，其余按时间
+private func displayIds(_ scene: PhotoScene) -> [String] {
+    let keep = scene.keepIds
+    let members = Set(scene.members.map { $0.id })
+    return (scene.highlights + scene.favorites).filter { members.contains($0) } + scene.members.map { $0.id }.filter { !keep.contains($0) }
+}
+
 private struct SceneCard: View {
     @EnvironmentObject var model: AppModel
     let scene: PhotoScene
     @Binding var selected: Set<String>
+    let drag: DragSelector
     let setKeep: (Int) -> Void
     let open: ([MediaItem], Int) -> Void
 
     var body: some View {
-        // 精华在前（按推荐顺序），其余按时间
-        // 精华在前（按推荐顺序），然后是收藏的，其余按时间
-        let keep = scene.keepIds
-        let ordered = (scene.highlights + scene.favorites).compactMap { id in scene.members.first { $0.id == id } } +
-            scene.members.filter { !keep.contains($0.id) }
-        let items = ordered.compactMap { model.library?.byId[$0.id] }
+        let items = displayIds(scene).compactMap { model.library?.byId[$0] }
         let dropped = scene.members.filter { selected.contains($0.id) }
         let bytes = dropped.reduce(Int64(0)) { $0 + $1.size }
         VStack(alignment: .leading, spacing: 10) {
@@ -114,6 +120,7 @@ private struct SceneCard: View {
                     PhotoCell(item: m, selected: selected.contains(m.id), tag: scene.highlights.contains(m.id) ? "精华" : scene.favorites.contains(m.id) ? "已收藏" : nil,
                               onToggle: { toggle(m.id) }, onOpen: { open(items, i) })
                         .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .dragSelectCell(m.id, drag)
                 }
             }
             HStack {

@@ -28,6 +28,7 @@ struct RecentView: View {
     @State private var scoring = true
     @State private var viewer: ViewerTarget?
     @State private var confirm = false
+    @State private var drag = DragSelector()
 
     var body: some View {
         let lib = model.library
@@ -39,26 +40,29 @@ struct RecentView: View {
                 if scoring {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("正在给\(recent.label)的 \(items.count) 张照片打分").font(.headline)
-                        ProgressView(value: model.progress.total > 0 ? model.progress.fraction : 0).tint(.brand)
+                        LiveBar(live: model.live)
                         Text("看清不清楚、构图好不好看、有没有人闭眼，全在手机里算。").font(.footnote).foregroundStyle(.secondary)
                     }
                     .padding(16).card(14).padding(.horizontal, 16).padding(.top, 8)
                 } else {
-                    Footnote(text: "\(recent.label)拍的 \(items.count) 张，每张标了美感分（1–10）。4.3 分及以下、拍糊的、连拍里不是最好的已经勾上；有人闭眼的只标出来。长按看大图。")
+                    Footnote(text: "\(recent.label)拍的 \(items.count) 张，每张标了美感分（1–10）。4.3 分及以下、拍糊的、连拍里不是最好的已经勾上；有人闭眼的只标出来。按住横着一划可以连续选，长按看大图。")
                         .padding(.top, 8)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                         ForEach(Array(items.enumerated()), id: \.element.id) { i, m in
                             PhotoCell(item: m, selected: selected.contains(m.id), tag: nil,
                                       onToggle: { toggle(m.id) }, onOpen: { viewer = ViewerTarget(items: items, start: i) })
                                 .overlay(alignment: .topLeading) { scoreBadge(m, lib).padding(4) }
+                                .dragSelectCell(m.id, drag)
                         }
                     }
                 }
             }
             .padding(.bottom, 20)
+            .dragSelect(drag, ids: { items.map { $0.id } }, selection: $selected, enabled: !scoring)
         }
         .background(Color.page)
         .navigationTitle("刚拍的")
+        .usagePage("刚拍的")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
             if !scoring {
@@ -122,5 +126,13 @@ struct RecentView: View {
 
     private func toggle(_ id: String) {
         if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
+    }
+}
+
+/// 打分进度条：只有它跟着进度刷新
+private struct LiveBar: View {
+    @ObservedObject var live: LiveProgress
+    var body: some View {
+        ProgressView(value: live.progress.total > 0 ? live.progress.fraction : 0).tint(.brand)
     }
 }

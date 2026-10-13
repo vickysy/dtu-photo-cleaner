@@ -67,6 +67,7 @@ struct DocsView: View {
         }
         .background(Color.page)
         .navigationTitle("文字与证件")
+        .usagePage("文字与证件")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -114,6 +115,7 @@ struct AlbumView: View {
     @State private var viewer: ViewerTarget?
     @State private var confirm = false
     @State private var share: ShareItems?
+    @State private var drag = DragSelector()
 
     private var all: [MediaItem] {
         guard let lib = model.library else { return [] }
@@ -130,7 +132,7 @@ struct AlbumView: View {
         let allSelected = !visible.isEmpty && visible.allSatisfy { selected.contains($0.id) }
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Footnote(text: note + "\n" + (selecting ? "点照片勾选，长按看大图。" :
+                Footnote(text: note + "\n" + (selecting ? "点照片勾选，按住横着一划可以连续选，长按看大图。" :
                     fixedIds != nil ? "点开看大图，左右滑一张张看；点右上角“选择”挑出要的几张，再拼成长图或整理成文字。"
                     : "点开看大图；点右上角“选择”可以多选，拼成长图发给朋友或得到。"))
                     .padding(.top, 8)
@@ -146,14 +148,16 @@ struct AlbumView: View {
                 }
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                     ForEach(Array(visible.enumerated()), id: \.element.id) { i, m in
-                        cell(m, i, visible)
+                        cell(m, i, visible).dragSelectCell(m.id, drag)
                     }
                 }
             }
             .padding(.bottom, 20)
+            .dragSelect(drag, ids: { visible.map { $0.id } }, selection: $selected, enabled: selecting)
         }
         .background(Color.page)
         .navigationTitle(title)
+        .usagePage(fixedIds != nil ? "截图笔记·一串截图" : "文字与证件·\(title)")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !visible.isEmpty {
@@ -204,7 +208,13 @@ struct AlbumView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                if selecting { toggle(m.id) } else { viewer = ViewerTarget(items: visible, start: i) }
+                if selecting {
+                    Usage.add((selected.contains(m.id) ? "取消勾选." : "勾选.") + Usage.page)
+                    toggle(m.id)
+                } else {
+                    Usage.add("看大图")
+                    viewer = ViewerTarget(items: visible, start: i)
+                }
             }
             // 长按：看图时进入选择并选中这张；选择时看大图
             .onLongPressGesture {
@@ -217,6 +227,7 @@ struct AlbumView: View {
             Text(text).font(.subheadline.weight(on ? .semibold : .regular)).foregroundStyle(on ? .white : .primary)
                 .padding(.horizontal, 14).padding(.vertical, 7)
                 .background(on ? Color.brand : Color.fillSoft, in: Capsule())
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
@@ -246,6 +257,7 @@ struct AlbumView: View {
             if fixedIds != nil {
                 tool("text.alignleft", "整理成文字", enabled: any) {
                     let pages = chosen.sorted { $0.timeMs < $1.timeMs }.map { model.library?.shotTexts[$0.id] ?? "" }
+                    Usage.add("整理成文字")
                     share = ShareItems(items: [ScreenText.buildNote(title: title, pages: pages)])
                 }
             }
@@ -272,6 +284,7 @@ struct AlbumView: View {
                 Text(label).font(.caption2).foregroundStyle(enabled ? .primary : .secondary).lineLimit(1)
             }
             .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain).disabled(!enabled)
     }
