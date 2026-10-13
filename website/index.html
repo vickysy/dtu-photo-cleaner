@@ -304,6 +304,17 @@ footer .r{margin-left:auto}
 .wx svg{width:80px;height:80px;margin:0 6px 0 auto;display:block}
 .wx p{font-size:19px;line-height:1.7;margin-top:8px;text-align:right}
 .wx b{color:var(--yellow)}
+.fb{max-width:640px;display:flex;flex-direction:column;gap:16px}
+.fb label{display:flex;flex-direction:column;gap:6px;font-size:15px;font-weight:600;color:var(--ink)}
+.fb .req{font-size:12px;font-weight:600;font-style:normal;color:var(--green-ink);margin-left:6px}
+.fb input,.fb textarea{font:inherit;font-weight:400;font-size:16px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;outline:none;transition:border-color .15s,box-shadow .15s;resize:vertical}
+.fb input:focus,.fb textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.fb-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:640px){.fb-row{grid-template-columns:1fr}}
+.fb .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.fb-go{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.fb-note{color:var(--faint);font-size:13px;margin:0}
+.fb-done{background:var(--green-soft);color:var(--green-ink);font-weight:600;border-radius:12px;padding:14px 16px;margin:0}
 .toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;font-size:15px;border-radius:999px;padding:10px 18px;opacity:0;transition:.2s;pointer-events:none;z-index:60}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
@@ -317,6 +328,7 @@ footer .r{margin-left:auto}
       <a class="opt" href="#features">功能</a>
       <a class="opt" href="#name">名字</a>
       <a class="opt" href="#learn">跟木妈学</a>
+      <a class="opt" href="#feedback">反馈</a>
       <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub</a>
       <a class="pill" href="#install">安装</a>
     </nav>
@@ -573,7 +585,32 @@ footer .r{margin-left:auto}
     <details><summary>开了云相册同步，删除会影响云端吗？</summary><p>可能会。开了云相册同步的，手机上删除后云端也可能跟着删。清理前建议先备份重要照片。</p></details>
     <details><summary>它判断得准吗？</summary><p>都是规则和小模型的判断，会有错，所以它只负责推荐。只有很确定的废片才默认勾选；拿不准的只标出来，删不删由你决定。</p></details>
     <details><summary>收费吗？</summary><p>免费，不用注册，没有广告。代码用 Apache-2.0 协议开源。</p></details>
-    <details><summary>遇到问题怎么反馈？</summary><p>在 App 里“设置 → 反馈问题”生成一份报告（只有手机型号、系统版本、照片数量和出错记录，没有照片），到 GitHub 提 Issue。</p></details>
+    <details><summary>遇到问题怎么反馈？</summary><p>直接在<a href="#feedback" style="color:var(--green-ink)">下面的反馈表</a>里写，我都会看。会用 GitHub 的也可以去提 Issue。</p></details>
+  </div>
+</section>
+
+<section id="feedback" class="alt">
+  <div class="wrap">
+    <div class="sec-head">
+      <p class="k">反馈</p>
+      <h2>遇到问题，告诉我</h2>
+      <p>装不上、闪退、判断不准，或者想要什么功能，都可以写在这里。</p>
+    </div>
+    <form class="fb" id="fb" novalidate>
+      <label><span>遇到了什么问题，或者想要什么功能？<em class="req">必填</em></span>
+        <textarea name="message" rows="5" maxlength="2000" required placeholder="比如：点“开始整理”以后一直转圈；希望能按人物分类……"></textarea></label>
+      <div class="fb-row">
+        <label>手机型号<input name="phone" maxlength="60" placeholder="比如：荣耀 Magic6、小米 14"></label>
+        <label>App 版本<input name="version" maxlength="30" placeholder="设置页最下面，比如 2.8.4"></label>
+      </div>
+      <label>联系方式（选填）<input name="contact" maxlength="80" placeholder="微信号或邮箱，方便我回复你"></label>
+      <label class="hp" aria-hidden="true">网址<input name="website" tabindex="-1" autocomplete="off"></label>
+      <div class="fb-go">
+        <button class="btn primary" type="submit" id="fb-send">发送</button>
+        <p class="fb-note">只用来回复你、改进轻了相册，不会给别人。不用写照片内容。</p>
+      </div>
+      <p class="fb-done" id="fb-done" hidden>收到了，谢谢你！我会认真看每一条。</p>
+    </form>
   </div>
 </section>
 
@@ -649,6 +686,7 @@ footer .r{margin-left:auto}
 <footer>
   <div class="wrap">
     <span>轻了相册 · 拍很多，留几张</span>
+    <a href="#feedback">反馈问题</a>
     <a href="https://github.com/vickysy/qingle-album" target="_blank" rel="noopener">GitHub 开源（Apache-2.0）</a>
     <a href="https://pingke.nativeailab.cn/" target="_blank" rel="noopener">屏刻录屏 ↗</a>
     <a href="https://mumaaidea.com/about" target="_blank" rel="noopener">认识木妈 ↗</a>
@@ -753,6 +791,27 @@ footer .r{margin-left:auto}
     var text=document.getElementById('prompt').textContent;
     function fallback(){var ta=document.createElement('textarea');ta.value=text;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('已复制')}catch(e){toast('复制失败，请长按文字复制')}document.body.removeChild(ta)}
     if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(text).then(function(){toast('已复制')},fallback)}else{fallback()}
+  });
+})();
+
+// 反馈表：发到 /api/feedback（服务器上的小程序收），不需要登录
+(function(){
+  var form=document.getElementById('fb');if(!form)return;
+  var btn=document.getElementById('fb-send'),done=document.getElementById('fb-done');
+  function tip(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('on');clearTimeout(tip._t);tip._t=setTimeout(function(){el.classList.remove('on')},2200)}
+  form.addEventListener('submit',function(e){
+    e.preventDefault();
+    var d={};['message','phone','version','contact','website'].forEach(function(k){d[k]=(form.elements[k].value||'').trim()});
+    if(d.message.length<2){tip('先写一下遇到的问题');form.elements.message.focus();return}
+    btn.disabled=true;btn.textContent='发送中…';
+    fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+      .then(function(r){return r.json().catch(function(){return {ok:false,error:'没发出去，过一会儿再试'}})})
+      .then(function(j){
+        if(j&&j.ok){form.reset();done.hidden=false;btn.textContent='再写一条';tip('收到了，谢谢！')}
+        else{btn.textContent='发送';tip((j&&j.error)||'没发出去，过一会儿再试')}
+      })
+      .catch(function(){btn.textContent='发送';tip('网络不太好，过一会儿再试')})
+      .then(function(){btn.disabled=false});
   });
 })();
 </script>

@@ -1,0 +1,19 @@
+# 轻了相册官网反馈表的接收程序（deploy/feedback/feedback_server.py → /opt/qingle-feedback/）
+[Unit]
+Description=qingle feedback receiver
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+ExecStart=/usr/bin/python3 /opt/qingle-feedback/feedback_server.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/qingle-feedback
+
+[Install]
+WantedBy=multi-user.target
