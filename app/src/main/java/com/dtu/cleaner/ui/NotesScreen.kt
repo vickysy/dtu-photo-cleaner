@@ -55,6 +55,9 @@ fun NotesScreen(vm: MainViewModel) {
     /** 处理完删掉了截图的那串 */
     val gone = remember { mutableStateMapOf<Long, Unit>() }
     var viewer by remember { mutableStateOf<Pair<List<MediaItem>, Int>?>(null) }
+    /** 点了“删掉这 N 张”、正在确认的那串；确认框里改成保留的记在 [keepInDelete] */
+    var pendingDelete by remember { mutableStateOf<ShotSession?>(null) }
+    val keepInDelete = remember { mutableStateMapOf<Long, Unit>() }
     val sessions = lib.sessions.filter { it.startMs !in gone }
 
     BackHandler { vm.back() }
@@ -97,7 +100,7 @@ fun NotesScreen(vm: MainViewModel) {
                     onText = { NoteMaker.shareText(ctx, noteOf(s), "把笔记发给…") },
                     onShareAll = { NoteMaker.shareImages(ctx, shots.map { it.uri }, null, "把截图发给…") },
                     onPick = { vm.openShotSession(s, titleOf(s)) },
-                    onDelete = { vm.delete(shots, vm.deleteModeFromSettings()) { ids -> if (ids.isNotEmpty()) gone[s.startMs] = Unit } },
+                    onDelete = { pendingDelete = s },
                 )
             }
         }
@@ -110,6 +113,21 @@ fun NotesScreen(vm: MainViewModel) {
             isMarked = { null },
             onToggle = {},
             onDismiss = { viewer = null },
+        )
+    }
+
+    pendingDelete?.let { s ->
+        val items = shotsOf(s).filter { it.id !in keepInDelete }
+        fun close() { pendingDelete = null; keepInDelete.clear() }
+        DeleteConfirm(
+            vm, items,
+            isMarked = { id -> id !in keepInDelete },
+            onToggle = { id -> if (id in keepInDelete) keepInDelete.remove(id) else keepInDelete[id] = Unit },
+            onConfirm = {
+                close()
+                vm.delete(items, vm.deleteModeFromSettings(), onRestored = { gone.remove(s.startMs) }) { ids -> if (ids.isNotEmpty()) gone[s.startMs] = Unit }
+            },
+            onDismiss = { close() },
         )
     }
 }

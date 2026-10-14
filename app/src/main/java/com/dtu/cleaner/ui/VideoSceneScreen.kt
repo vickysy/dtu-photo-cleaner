@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,14 +49,15 @@ import com.dtu.cleaner.util.Fmt
 @Composable
 fun VideoSceneScreen(vm: MainViewModel, s: VideoSceneSession) {
     var viewer by remember { mutableStateOf<Pair<List<MediaItem>, Int>?>(null) }
-    var confirmAll by remember { mutableStateOf(false) }
+    var pending by remember { mutableStateOf<Set<Long>?>(null) }
+    var pendingAll by remember { mutableStateOf(false) }
     val scenes = s.active
     val all = s.selectedItems()
 
     fun deleteScenes(targets: List<VideoScene>) {
         val items = targets.flatMap { s.selectedIn(it) }
         val kept = targets.flatMap { s.keptIn(it) }
-        vm.delete(items, vm.deleteModeFromSettings(), kept) { ids ->
+        vm.delete(items, vm.deleteModeFromSettings(), kept, onRestored = s::onRestored) { ids ->
             s.onDeleted(ids)
             if (ids.isNotEmpty()) s.markDone(targets.filter { s.selectedIdsIn(it).isEmpty() })
         }
@@ -82,7 +84,7 @@ fun VideoSceneScreen(vm: MainViewModel, s: VideoSceneSession) {
                         style = IosType.caption, color = ios.secondary,
                     )
                 }
-                CapsuleButton("全部删除…", { confirmAll = true }, color = ios.red, filled = false, enabled = all.isNotEmpty())
+                CapsuleButton("全部删除…", { pendingAll = true; pending = s.active.map { it.key }.toSet() }, color = ios.red, filled = false, enabled = all.isNotEmpty())
             }
         }),
     ) {
@@ -90,7 +92,7 @@ fun VideoSceneScreen(vm: MainViewModel, s: VideoSceneSession) {
             item {
                 Footnote(
                     "同一个地方接连拍了好几段视频时，帮你推荐留哪几段：时长够、画面清楚、构图好看，而且尽量是不同的内容。" +
-                        "其余的已经勾选。几段视频内容往往不一样，长按播放看一眼再删；只点这个场景自己的“删除”，不会动别的。",
+                        "其余的已经勾选。几段视频内容往往不一样，点右上角 ▶ 播放看一眼再删；只点这个场景自己的“删除”，不会动别的。",
                 )
             }
             if (scenes.isEmpty()) item { EmptyState("视频场景都处理完了") }
@@ -98,26 +100,11 @@ fun VideoSceneScreen(vm: MainViewModel, s: VideoSceneSession) {
                 VideoSceneCard(
                     s, sc,
                     onPlay = { list, i -> viewer = list to i },
-                    onDelete = { deleteScenes(listOf(sc)) },
+                    onDelete = { pendingAll = false; pending = setOf(sc.key) },
                     onKeep = { keepScene(sc) },
                 )
             }
         }
-    }
-
-    if (confirmAll) {
-        val trash = vm.deleteModeFromSettings() == DeleteMode.TRASH
-        IosAlert(
-            title = "删除 ${scenes.size} 个场景里的 ${all.size} 段视频？",
-            message = "包括你还没播放看过的场景。每个场景按现在的勾选处理，推荐的留下，其余 ${Fmt.bytes(all.sumOf { it.size })} " +
-                (if (trash) "移到“最近删除”，30 天内能恢复。" else "直接彻底删除，无法恢复。") +
-                "\n只想删一个场景，点那个场景卡片上的“删除”。",
-            actions = listOf(
-                AlertAction("取消", AlertAction.Role.Cancel) { confirmAll = false },
-                AlertAction("全部删除", AlertAction.Role.Destructive) { confirmAll = false; deleteScenes(s.active) },
-            ),
-            onDismiss = { confirmAll = false },
-        )
     }
 
     viewer?.let { (list, start) ->
@@ -127,6 +114,18 @@ fun VideoSceneScreen(vm: MainViewModel, s: VideoSceneSession) {
             isMarked = { id -> s.isMarked(id) },
             onToggle = { id -> s.toggle(id) },
             onDismiss = { viewer = null },
+        )
+    }
+
+    pending?.let { keys ->
+        val targets = s.active.filter { it.key in keys }
+        DeleteConfirm(
+            vm, targets.flatMap { s.selectedIn(it) },
+            isMarked = { id -> s.isMarked(id) },
+            onToggle = { id -> s.toggle(id) },
+            onConfirm = { pending = null; deleteScenes(targets) },
+            onDismiss = { pending = null },
+            note = if (pendingAll) "${targets.size} 个场景里勾上的，包括还没滑到的场景。推荐的会留下。" else null,
         )
     }
 }
@@ -164,7 +163,7 @@ private fun VideoSceneCard(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            // 所有片段一排横着放：留下的在前，点一下切换删/留，长按播放
+            // 所有片段一排横着放：留下的在前，点一下切换删/留，点右上角 ▶（或长按）播放
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -177,7 +176,7 @@ private fun VideoSceneCard(
                 }
             }
             Text(
-                "点视频切换删/留，长按播放。打勾的会删掉。",
+                "点视频切换删/留，点右上角 ▶ 播放。打勾的会删掉。",
                 style = IosType.caption, color = ios.secondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
             IosDivider()
@@ -211,6 +210,7 @@ private fun ClipTile(m: MediaItem, marked: Boolean, star: Boolean, favorite: Boo
         if (favorite) PhotoBadge("已收藏", Modifier.align(Alignment.TopStart).padding(6.dp))
         PhotoBadge("${Fmt.duration(m.durationMs)} · ${Fmt.bytes(m.size)}", Modifier.align(Alignment.BottomStart).padding(6.dp))
         SelectCircle(marked, Modifier.align(Alignment.BottomEnd).padding(6.dp).padding(bottom = 22.dp))
+        ZoomButton(onPlay, Modifier.align(Alignment.TopEnd).padding(2.dp), icon = Icons.Rounded.PlayArrow)
     }
 }
 

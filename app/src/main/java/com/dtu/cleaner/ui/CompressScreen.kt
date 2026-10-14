@@ -115,7 +115,7 @@ fun CompressScreen(vm: MainViewModel) {
                         )
                         Footnote(
                             (if (keep4k) "保留 4K 分辨率，只换成更省空间的格式。" else "转成 1080p 高清，手机、电视上看都够清楚。") +
-                                "\n${candidates.size} 个视频全压大约能省 ${Fmt.bytes(totalSaving)}。点视频选择，按住横着一划可以连续选，长按播放。",
+                                "\n${candidates.size} 个视频全压大约能省 ${Fmt.bytes(totalSaving)}。点视频选择，按住横着一划可以连续选；点右上角放大镜播放。",
                         )
                     }
                 }

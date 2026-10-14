@@ -117,6 +117,13 @@ object ScreenText {
     private val ORDER_WEAK = listOf("实付", "退款", "物流", "已签收", "已发货", "待收货", "确认收货", "商品总价")
     /** 只在聊天记录里出现的字（“按住说话”“视频通话”抖音、得到、豆包里也有，不算） */
     private val CHAT_WORDS = listOf("撤回了一条消息", "[语音]", "[图片]", "[表情]", "[动画表情]", "拍了拍", "以下为新消息")
+    /**
+     * 语音消息的时长：微信、QQ 的语音气泡只有一个“18″”（前面的喇叭图标常被认成零碎符号）。
+     * 整行只有秒数加引号，文章、界面里几乎不会出现。
+     */
+    private val VOICE_LINE = Regex("^[^\\p{L}\\d]{0,4}\\d{1,2}\\s*[\"“”″＂'’]{1,2}$")
+    /** 截图文件名里的微信聊天界面（荣耀、华为会把截图时所在的界面写进文件名：Screenshot_…_com_tencent_mm_LauncherUI.jpg） */
+    private val WECHAT_CHAT_SCREEN = Regex("com[._]tencent[._]mm[._].*(LauncherUI|ChattingUI)", RegexOption.IGNORE_CASE)
     /** 聊天记录中间的时间分隔：“昨天 21:30”“星期三 10:12”“下午 3:05” */
     private val CHAT_TIME = Regex("^(昨天|前天|星期[一二三四五六日天]|周[一二三四五六日天]|上午|下午|晚上|凌晨|中午|早上)\\s*\\d{1,2}[:：]\\d{2}$")
     /** 聊天记录里居中的时间戳（去掉空格后整行匹配）：“10:12”“昨天21:30”“3月1日下午3:05”“2025/3/1 10:12” */
@@ -169,8 +176,9 @@ object ScreenText {
 
     /**
      * [paper] 是 [paperFraction]（相机照片用；不知道就是 -1，不认文件照片）。
+     * [name] 是文件名：有的手机把截图时所在的界面写在里面（微信聊天界面截的图，长段文字也算聊天记录）。
      */
-    fun classify(text: String, codes: List<String>, layout: TextLayout? = null, camera: Boolean = false, paper: Float = -1f): ShotKind? {
+    fun classify(text: String, codes: List<String>, layout: TextLayout? = null, camera: Boolean = false, paper: Float = -1f, name: String = ""): ShotKind? {
         val t = text.replace(" ", "").replace("\n", "")
         val coverage = layout?.coverage ?: -1f
         val lines = cleanLines(text)
@@ -201,6 +209,9 @@ object ScreenText {
             ORDER_STRONG.any { it in t } || countIn(ORDER_WEAK, t) >= 2 -> ShotKind.ORDER
             CHAT_WORDS.any { it in t } -> ShotKind.CHAT
             layout != null && layout.wechatChat -> ShotKind.CHAT
+            // 对方发来一大段字、再加几条语音：没有绿气泡、没有居中的时间，以前会被当成文章
+            text.lines().count { VOICE_LINE.matches(it.trim()) } >= 2 -> ShotKind.CHAT
+            WECHAT_CHAT_SCREEN.containsMatchIn(name) -> ShotKind.CHAT
             // 聊天中间的时间（“昨天 21:30”），再加上对齐的气泡、左右不并排（文件列表、日程表也有时间，但会并排）
             layout != null && (layout.times > 0 || lines.any { CHAT_TIME.matches(it) }) && layout.bubbles -> ShotKind.CHAT
             codes.isNotEmpty() && chars < 150 -> ShotKind.QR

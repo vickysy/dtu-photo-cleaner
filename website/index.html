@@ -344,13 +344,13 @@ footer .r{margin-left:auto}
     <h1>拍很多，<br><em>留几张</em>。</h1>
     <p class="lead">同一个地方拍了几十张，它替你挑出三五张精华；拍糊的、重复的、过期的截图，先帮你勾好。你只管扫一眼，点确认。删完，手机轻了，心也轻了。</p>
     <div class="cta">
-      <a class="btn primary dl" href="download/qingle-album-v2.8.4.apk" download>
+      <a class="btn primary dl" href="download/qingle-album-v2.8.5.apk" download>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14"/></svg>
         下载安卓版
       </a>
       <a class="btn glass" href="#install">怎么安装</a>
     </div>
-    <p class="meta">v2.8.4 · 48 MB · 安卓 11 及以上 · 免费，不用注册</p>
+    <p class="meta">v2.8.5 · 48 MB · 安卓 11 及以上 · 免费，不用注册</p>
     <ul class="hstats">
       <li><b>自动分类</b></li>
       <li><b>照片打分</b></li>
@@ -380,7 +380,7 @@ footer .r{margin-left:auto}
       <div class="promise">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></div>
         <h3>删错了也能找回</h3>
-        <p>App 自己删不了照片。每次删除都要你在系统弹窗里点确认，删掉的先进“最近删除”，30 天内都能恢复。</p>
+        <p>App 自己删不了照片。删之前先给你看一眼要删的是哪几张，再要你在系统弹窗里点确认；删完能马上撤销，删掉的也先进轻了相册的“最近删除”，30 天内都能恢复。</p>
       </div>
       <div class="promise">
         <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/></svg></div>
@@ -537,8 +537,8 @@ footer .r{margin-left:auto}
           <li>下载完点开安装。提示“未知来源”或“外部来源应用”时，允许这一次。</li>
           <li>打开后允许访问照片时选“全部允许”。第一次分析几千张照片要两三分钟，建议边充电边等。</li>
         </ol>
-        <a class="btn primary dl" href="download/qingle-album-v2.8.4.apk" download>下载安卓版 v2.8.4</a>
-        <p class="meta">也可以去 <a href="https://github.com/vickysy/qingle-album/releases/latest" target="_blank" rel="noopener" style="color:var(--green-ink)">GitHub Releases</a> 下载。下载不动的话，试试<a href="cdn-origin/qingle-album-v2.8.4.apk" style="color:var(--green-ink)">备用地址</a>（直接从服务器下，慢一些）。</p>
+        <a class="btn primary dl" href="download/qingle-album-v2.8.5.apk" download>下载安卓版 v2.8.5</a>
+        <p class="meta">也可以去 <a href="https://github.com/vickysy/qingle-album/releases/latest" target="_blank" rel="noopener" style="color:var(--green-ink)">GitHub Releases</a> 下载。下载不动的话，试试<a href="cdn-origin/qingle-album-v2.8.5.apk" style="color:var(--green-ink)">备用地址</a>（直接从服务器下，慢一些）。</p>
       </div>
     </div>
     <div class="ios" id="iphone">
@@ -583,7 +583,9 @@ footer .r{margin-left:auto}
     <details><summary>iPhone、纯血鸿蒙能用吗？</summary><p>iPhone 版还在测试，没上架 App Store，暂时不能直接下载；有 Mac 的可以照<a href="#iphone" style="color:var(--green-ink)">上面的方法</a>自己装。页面上有两张截图来自 iPhone 版。华为鸿蒙 4 及以前的手机可以装安卓版，鸿蒙 5 及以上（纯血鸿蒙）暂时用不了。</p></details>
     <details><summary>真的不会把照片传出去吗？</summary><p>不会。它没有联网权限，你可以在手机“设置 → 应用 → 轻了相册 → 权限”里自己确认。代码也全部公开在 GitHub 上，谁都可以检查。</p></details>
     <details><summary>开了云相册同步，删除会影响云端吗？</summary><p>可能会。开了云相册同步的，手机上删除后云端也可能跟着删。清理前建议先备份重要照片。</p></details>
-    <details><summary>它判断得准吗？</summary><p>都是规则和小模型的判断，会有错，所以它只负责推荐。只有很确定的废片才默认勾选；拿不准的只标出来，删不删由你决定。</p></details>
+    <details><summary>它判断得准吗？</summary><p>都是规则和小模型的判断，会有错，所以它只负责推荐。只有很确定的废片才默认勾选；拿不准的只标出来，删不删由你决定。删之前都会弹出确认框，给你看要删的是哪几张，还能一张张看大图。</p></details>
+    <details><summary>误删了怎么找回？</summary><p>打开轻了相册，首页拉到最下面点“最近删除”（也可以从 设置 → 最近删除 进），选中照片点“恢复”，就回到相册里了，30 天内都行。手机自带相册的“最近删除”里不一定看得到这些照片。刚删完的话，直接点提示里的“撤销”最快。</p></details>
+    <details><summary>怎么看大图？</summary><p>点照片右上角的放大镜，或者按住照片。大图里左右滑能一张张看，也能直接改成“保留”。</p></details>
     <details><summary>收费吗？</summary><p>免费，不用注册，没有广告。代码用 Apache-2.0 协议开源。</p></details>
     <details><summary>遇到问题怎么反馈？</summary><p>直接在<a href="#feedback" style="color:var(--green-ink)">下面的反馈表</a>里写，我都会看。会用 GitHub 的也可以去提 Issue。</p></details>
   </div>
@@ -601,7 +603,7 @@ footer .r{margin-left:auto}
         <textarea name="message" rows="5" maxlength="2000" required placeholder="比如：点“开始整理”以后一直转圈；希望能按人物分类……"></textarea></label>
       <div class="fb-row">
         <label>手机型号<input name="phone" maxlength="60" placeholder="比如：荣耀 Magic6、小米 14"></label>
-        <label>App 版本<input name="version" maxlength="30" placeholder="设置页最下面，比如 2.8.4"></label>
+        <label>App 版本<input name="version" maxlength="30" placeholder="设置页最下面，比如 2.8.5"></label>
       </div>
       <label>联系方式（选填）<input name="contact" maxlength="80" placeholder="微信号或邮箱，方便我回复你"></label>
       <label class="hp" aria-hidden="true">网址<input name="website" tabindex="-1" autocomplete="off"></label>
@@ -675,10 +677,10 @@ footer .r{margin-left:auto}
     <h2>这个月，相册<em>清了没</em>？</h2>
     <p class="sub">挑照片交给它，删不删你说了算。</p>
     <div class="cta">
-      <a class="btn primary dl" href="download/qingle-album-v2.8.4.apk" download>下载安卓版</a>
+      <a class="btn primary dl" href="download/qingle-album-v2.8.5.apk" download>下载安卓版</a>
       <a class="btn glass" href="#install">怎么安装</a>
     </div>
-    <p class="meta">v2.8.4 · 免费，不用注册，没有广告</p>
+    <p class="meta">v2.8.5 · 免费，不用注册，没有广告</p>
   </div>
 </section>
 </main>

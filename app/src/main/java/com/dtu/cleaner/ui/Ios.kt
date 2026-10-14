@@ -367,7 +367,7 @@ fun IosAlert(title: String, message: String?, actions: List<AlertAction>, onDism
 }
 
 @Composable
-private fun AlertCell(a: AlertAction, modifier: Modifier) {
+fun AlertCell(a: AlertAction, modifier: Modifier) {
     Box(modifier.fillMaxHeight().rowPress(a.onClick), contentAlignment = Alignment.Center) {
         Text(
             a.text,
@@ -378,15 +378,30 @@ private fun AlertCell(a: AlertAction, modifier: Modifier) {
     }
 }
 
-/** 底部的黑色圆角提示（代替 Material 的 Snackbar） */
+/** 底部的黑色圆角提示（代替 Material 的 Snackbar）；带按钮的（比如“撤销”）按钮在右边 */
 @Composable
 fun IosToastHost(state: SnackbarHostState, modifier: Modifier = Modifier) {
     SnackbarHost(state, modifier) { data ->
-        Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
-            Text(
-                data.visuals.message, color = Color.White, style = IosType.subhead, textAlign = TextAlign.Center,
-                modifier = Modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xE61C1C1E)).padding(horizontal = 18.dp, vertical = 12.dp),
-            )
+        val action = data.visuals.actionLabel
+        Box(Modifier.fillMaxWidth().padding(horizontal = if (action != null) 16.dp else 28.dp, vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Row(
+                Modifier.clip(RoundedCornerShape(16.dp)).background(Color(0xE61C1C1E))
+                    .padding(start = 18.dp, end = if (action != null) 6.dp else 18.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    data.visuals.message, color = Color.White, style = IosType.subhead,
+                    textAlign = if (action != null) TextAlign.Start else TextAlign.Center,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (action != null) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        action, color = ios.yellow, style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), maxLines = 1,
+                        modifier = Modifier.clip(CircleShape).iosPress { data.performAction() }.padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
+            }
         }
     }
 }
@@ -405,7 +420,8 @@ fun IosPage(
             Column(Modifier.fillMaxWidth().weight(1f), content = content)
             toolbar?.invoke()
         }
-        if (toast != null) IosToastHost(toast, Modifier.align(Alignment.BottomCenter).padding(bottom = if (toolbar != null) 84.dp else 24.dp))
+        // 让开系统导航栏（三键导航时有 48dp），两行的提示也不会被盖住
+        if (toast != null) IosToastHost(toast, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = if (toolbar != null) 60.dp else 16.dp))
     }
 }
 

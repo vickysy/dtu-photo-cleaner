@@ -66,9 +66,18 @@ class AlbumSession(
         }
     }
 
-    fun selectedItems(): List<MediaItem> = entries.filter { it.item.id in selected && it.item.id !in deleted }.map { it.item }
+    /** 只算眼前这一类里勾上的：别的标签下勾着的不会跟着删、跟着分享 */
+    fun selectedItems(praise: Set<Long>): List<MediaItem> = visible(praise).filter { it.item.id in selected }.map { it.item }
+
+    /** 勾着、但在别的标签下（现在看不到）的张数 */
+    fun hiddenSelected(praise: Set<Long>): Int = selectedAll().size - selectedItems(praise).size
+
+    private fun selectedAll() = entries.filter { it.item.id in selected && it.item.id !in deleted }
 
     fun toggle(id: Long) { if (id in selected) selected.remove(id) else selected[id] = Unit }
+
+    /** 撤销删除：回来的照片重新显示，不再勾着 */
+    fun onRestored(ids: Set<Long>) = ids.forEach { deleted.remove(it); selected.remove(it) }
 
     companion object {
         const val PRAISE = "好评"
@@ -115,12 +124,19 @@ class VideoSceneSession(initial: List<com.dtu.cleaner.core.VideoScene>, val item
 
     fun onDeleted(ids: Set<Long>) = ids.forEach { deleted[it] = Unit }
 
+    /** 撤销删除：回来的视频改成保留，所在的场景重新显示 */
+    fun onRestored(ids: Set<Long>) {
+        ids.forEach { deleted.remove(it); marks[it] = false }
+        scenes.filter { sc -> sc.members.any { it.id in ids } }.forEach { done.remove(it.key) }
+    }
+
     fun markDone(list: Collection<com.dtu.cleaner.core.VideoScene>) = list.forEach { done[it.key] = Unit }
 }
 
 /**
- * “相似照片”一页看完：所有组一路往下滑，AI 已经按建议勾好要删的，用户只改不对的，最后一次删完。
- * 分两类：几乎一样（连拍/重复，可靠）和 同一场景换了角度（容易判断错，需要看一眼）。
+ * “相似照片”一页看完：所有组一路往下滑，用户只改不对的，最后一次删完。
+ * 分两类：几乎一样（连拍/重复，可靠）——AI 已经按建议勾好要删的；
+ * 同一场景换了角度（容易判断错：两页不同的文件、不同的人）——只标出推荐留哪张，不帮用户勾，想删自己点或点“全部按推荐”。
  */
 class SimilarSession(val groups: List<RankedGroup>, val itemOf: (Long) -> MediaItem?) {
     /** 照片 id → 是否标记删除（初始值来自 AI 建议） */
@@ -128,7 +144,7 @@ class SimilarSession(val groups: List<RankedGroup>, val itemOf: (Long) -> MediaI
     val deleted = mutableStateMapOf<Long, Unit>()
     var tab by mutableIntStateOf(if (groups.any { it.nearIdentical }) 0 else 1)
 
-    init { groups.forEach { reset(it) } }
+    init { groups.forEach { if (it.nearIdentical) reset(it) else keepAll(it) } }
 
     val near: List<RankedGroup> get() = groups.filter { it.nearIdentical && visibleMembers(it).size >= 2 }
     val varied: List<RankedGroup> get() = groups.filter { !it.nearIdentical && visibleMembers(it).size >= 2 }
@@ -156,11 +172,18 @@ class SimilarSession(val groups: List<RankedGroup>, val itemOf: (Long) -> MediaI
         .mapNotNull { itemOf(it.photo.id) }
         .toList()
 
-    /** 删除后，这一类里留下来的照片以后不再提示 */
+    /**
+     * 删除后，留下来的照片以后不再提示。“几乎一样”是 AI 勾好的，没删的组也算用户看过、要留；
+     * “角度不同”默认不勾，只有用户动手删过的组才算，没碰过的组下次照样提示。
+     */
     fun keptIds(inGroups: List<RankedGroup> = shown): List<Long> =
-        inGroups.flatMap { visibleMembers(it) }.filter { !isMarked(it.photo.id) }.map { it.photo.id }
+        inGroups.filter { g -> g.nearIdentical || visibleMembers(g).any { isMarked(it.photo.id) } }
+            .flatMap { visibleMembers(it) }.filter { !isMarked(it.photo.id) }.map { it.photo.id }
 
     fun onDeleted(ids: Set<Long>) = ids.forEach { deleted[it] = Unit }
+
+    /** 撤销删除：回来的照片改成保留 */
+    fun onRestored(ids: Set<Long>) = ids.forEach { deleted.remove(it); marks[it] = false }
 
     /**
      * 用户改过推荐的组里，留下的和删掉的两两比较：美感高但没那么清楚的被留下 → 更看重好看；反过来 → 更看重清楚。
@@ -189,7 +212,7 @@ class SimilarSession(val groups: List<RankedGroup>, val itemOf: (Long) -> MediaI
 }
 
 /**
- * 场景精选：每个场景推荐几张精华，其余默认勾选删除。用户可以调保留张数、展开逐张改。
+ * 场景精选：每个场景推荐几张精华，其余默认勾选删除。要删的默认全部摊开给用户看，可以调保留张数、逐张改。
  * 删除按场景来：每个场景卡片自己的“删除”只删这个场景；处理完（删了或全部保留）的场景从列表里消失。
  * 底部“全部按推荐删除”才会一次处理所有还没处理的场景，并且要先确认。
  */
@@ -207,7 +230,7 @@ class SceneSession(initial: List<Scene>, val taste: com.dtu.cleaner.core.Taste =
     fun ordered(list: List<com.dtu.cleaner.core.PhotoInfo>) =
         if (sortByAes) list.sortedByDescending { it.aesthetic ?: 0f } else list
 
-    init { initial.forEach { reset(it) } }
+    init { initial.forEach { reset(it); expanded[it.key] = Unit } }
 
     fun visible(sc: Scene) = sc.members.filter { it.id !in deleted }
 
@@ -251,6 +274,12 @@ class SceneSession(initial: List<Scene>, val taste: com.dtu.cleaner.core.Taste =
 
     fun onDeleted(ids: Set<Long>) = ids.forEach { deleted[it] = Unit }
 
+    /** 撤销删除：回来的照片改成保留，所在的场景重新显示 */
+    fun onRestored(ids: Set<Long>) {
+        ids.forEach { deleted.remove(it); marks[it] = false }
+        scenes.filter { sc -> sc.members.any { it.id in ids } }.forEach { done.remove(it.key); expanded[it.key] = Unit }
+    }
+
     fun markDone(scenes: Collection<Scene>) = scenes.forEach { done[it.key] = Unit; expanded.remove(it.key) }
 }
 
@@ -289,8 +318,15 @@ class GridSession(val kind: GridKind, val entries: List<GridEntry>, val title: S
         return if (sortDesc) list.sortedByDescending { it.score ?: 0f } else list.sortedBy { it.score ?: 0f }
     }
 
-    fun selectedItems(): List<MediaItem> = entries.filter { it.item.id in selected && it.item.id !in deleted }.map { it.item }
+    /** 只删眼前这一类里勾上的：别的标签下勾着的不会跟着删 */
+    fun selectedItems(): List<MediaItem> = visible().filter { it.item.id in selected }.map { it.item }
 
-    /** AI 建议删但用户取消勾选的：用户明确想留，以后不再提示 */
-    fun explicitlyKept(): List<Long> = entries.filter { it.suggested && it.item.id !in selected }.map { it.item.id }
+    /** 勾着、但在别的标签下（现在看不到）的张数 */
+    fun hiddenSelected(): Int = entries.count { it.item.id in selected && it.item.id !in deleted } - selectedItems().size
+
+    /** 眼前这一类里，AI 建议删但用户取消勾选的：用户明确想留，以后不再提示 */
+    fun explicitlyKept(): List<Long> = visible().filter { it.suggested && it.item.id !in selected }.map { it.item.id }
+
+    /** 撤销删除：回来的照片重新显示，不再勾着 */
+    fun onRestored(ids: Set<Long>) = ids.forEach { deleted.remove(it); selected.remove(it) }
 }

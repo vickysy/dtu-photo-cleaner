@@ -321,6 +321,20 @@ class Analyzer(private val ctx: Context, private val db: AnalysisDb, private val
     }
 
     /**
+     * 只给这几张截图识字分类（几秒钟），不用等整个相册分析完：刚截的聊天记录打开 App 就进“聊天记录”，能设为好评。
+     * 返回这次识了几张（0 = 都识过了）。
+     */
+    suspend fun quickTexts(items: List<MediaItem>): Int {
+        val texts = db.loadTexts()
+        val work = items.filter { m ->
+            m.mime != "image/gif" && (m.maxSide == 0 || m.maxSide >= 400) &&
+                texts[m.id].let { it == null || it.modified != m.modified || it.version != textVersion(m) }
+        }
+        recognizeText(work, Phase.TEXT, 0) {}
+        return work.size
+    }
+
+    /**
      * 只分析这几张（“刚拍的”用）：特征、人脸、美感分，几秒钟就好，不用等整个相册。
      * 结果照样存进数据库，之后的全相册分析会跳过它们。
      */

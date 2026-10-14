@@ -37,6 +37,7 @@ import com.dtu.cleaner.util.Fmt
 
 /**
  * 相似照片：一页看完，一次删完。勾选 = 要删除；“推荐”是建议保留的那张。
+ * “角度不同”那一类容易判断错，不帮用户勾，只标出推荐。删之前都要在确认框里看一眼要删的。
  */
 @Composable
 fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
@@ -66,11 +67,7 @@ fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
                     Text("已选 ${selected.size} 张", style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = ios.label)
                     Text("${Fmt.bytes(selected.sumOf { it.size })} · 只删当前分类", style = IosType.caption, color = ios.secondary)
                 }
-                CapsuleButton("删除", color = ios.red, enabled = selected.isNotEmpty(), onClick = {
-                    // 跨了好几组时先说清楚删的是哪些，免得以为只删眼前这一组
-                    if (s.shown.count { g -> s.visibleMembers(g).any { s.isMarked(it.photo.id) } } > 1) confirm = true
-                    else deleteShown(vm, s)
-                })
+                CapsuleButton("删除", color = ios.red, enabled = selected.isNotEmpty(), onClick = { confirm = true })
             }
         },
     ) {
@@ -88,9 +85,10 @@ fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
             }
             item(key = "hint${s.tab}") {
                 Column {
+                    PreviewHint(vm, Modifier.padding(bottom = 10.dp))
                     Footnote(
-                        if (s.tab == 0) "连拍、重复保存的照片，画面几乎一样。每组已经挑好最好的一张，其余的勾选了。按住照片横着一划可以连续选或取消。"
-                        else "同一个地方换了角度或构图拍的。这类最容易判断错，比如两页不同的文件、不同的人，看到不想删的点一下取消。",
+                        if (s.tab == 0) "连拍、重复保存的照片，画面几乎一样。每组已经挑好最好的一张，其余的勾选了。点照片切换，按住横着一划可以连续选或取消；点右上角放大镜看大图。"
+                        else "同一个地方换了角度或构图拍的。这类最容易判断错（比如两页不同的文件、不同的人），所以没帮你勾：每组标了“推荐”留的那张，“差不多”是机器也分不出高下的。想删的点一下，或者点“全部按推荐”。",
                     )
                     Row(Modifier.padding(horizontal = 32.dp)) {
                         TextAction("全部按推荐", { shown.forEach { s.reset(it) } }, style = IosType.subhead)
@@ -106,16 +104,14 @@ fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
 
     if (confirm) {
         val groups = s.shown.count { g -> s.visibleMembers(g).any { s.isMarked(it.photo.id) } }
-        val trash = vm.deleteModeFromSettings() == DeleteMode.TRASH
-        IosAlert(
-            title = "删除 $groups 组里的 ${selected.size} 张？",
-            message = "“${if (s.tab == 0) "几乎一样" else "角度不同"}”这一类里所有勾选的照片，包括没滑到的组。每组推荐的那张会留下。" +
-                if (trash) "删掉的先进“最近删除”，30 天内能恢复。" else "直接彻底删除，无法恢复。",
-            actions = listOf(
-                AlertAction("取消", AlertAction.Role.Cancel) { confirm = false },
-                AlertAction("删除", AlertAction.Role.Destructive) { confirm = false; deleteShown(vm, s) },
-            ),
+        DeleteConfirm(
+            vm, s.selectedItems(s.shown),
+            isMarked = { id -> s.isMarked(id) },
+            onToggle = { id -> s.toggle(id) },
+            onConfirm = { confirm = false; deleteShown(vm, s) },
             onDismiss = { confirm = false },
+            // 跨了好几组时说清楚删的是哪些，免得以为只删眼前这一组
+            note = if (groups > 1) "“${if (s.tab == 0) "几乎一样" else "角度不同"}”里 $groups 组勾上的，包括没滑到的组。" else null,
         )
     }
 
@@ -138,7 +134,7 @@ fun SimilarScreen(vm: MainViewModel, s: SimilarSession) {
 private fun deleteShown(vm: MainViewModel, s: SimilarSession) {
     val groups = s.shown
     val votes = s.tasteVotes(groups)
-    vm.delete(s.selectedItems(groups), vm.deleteModeFromSettings(), s.keptIds(groups)) { ids ->
+    vm.delete(s.selectedItems(groups), vm.deleteModeFromSettings(), s.keptIds(groups), onRestored = s::onRestored) { ids ->
         if (ids.isNotEmpty()) vm.recordTaste(votes)
         s.onDeleted(ids)
     }
@@ -180,8 +176,8 @@ fun EmptyState(text: String) {
     }
 }
 
-/** 这些标签信息量小，不显示 */
-private val QUIET_TAGS = setOf("最佳", "相似", "少了人", RankedGroup.CLOSE_TAG)
+/** 这些标签信息量小，不显示（“差不多”要显示：提醒这两张机器也分不出高下） */
+private val QUIET_TAGS = setOf("最佳", "相似", "少了人")
 
 private fun photoInfo(rp: RankedPhoto): String {
     val f = rp.photo.features

@@ -20,8 +20,8 @@ android {
         applicationId = "com.dtu.cleaner"
         minSdk = 30
         targetSdk = 35
-        versionCode = 29
-        versionName = "2.8.4"
+        versionCode = 30
+        versionName = "2.8.5"
         ndk { abiFilters += listOf("arm64-v8a") }
     }
 

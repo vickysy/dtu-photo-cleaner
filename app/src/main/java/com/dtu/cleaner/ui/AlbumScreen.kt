@@ -50,8 +50,9 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
     val ctx = LocalContext.current
     val praise = vm.praise
     val visible = s.visible(praise)
-    val selectedItems = s.selectedItems()
+    val selectedItems = s.selectedItems(praise)
     var viewer by remember { mutableStateOf<Int?>(null) }
+    var confirm by remember { mutableStateOf(false) }
     val sources = remember(s) { s.entries.flatMap { it.tags }.distinct() }
     val praisedCount = s.entries.count { it.item.id in praise && it.item.id !in s.deleted }
     val allSelected = visible.isNotEmpty() && visible.all { it.item.id in s.selected }
@@ -69,7 +70,7 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
     }
 
     fun delete(items: List<MediaItem>) {
-        vm.delete(items, vm.deleteModeFromSettings()) { ids -> ids.forEach { s.deleted[it] = Unit; s.selected.remove(it) } }
+        vm.delete(items, vm.deleteModeFromSettings(), onRestored = s::onRestored) { ids -> ids.forEach { s.deleted[it] = Unit; s.selected.remove(it) } }
     }
 
     BackHandler { if (s.selecting && !s.startSelecting) exitSelecting() else vm.back() }
@@ -116,7 +117,7 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
                         if (!s.startSelecting) exitSelecting()
                     }
                 }
-                ToolAction(Icons.Rounded.Delete, "删除", enabled = any, tint = ios.red, modifier = Modifier.weight(1f)) { delete(selectedItems) }
+                ToolAction(Icons.Rounded.Delete, "删除", enabled = any, tint = ios.red, modifier = Modifier.weight(1f)) { confirm = true }
             }
         }),
     ) {
@@ -131,7 +132,7 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(Modifier.padding(top = 12.dp, bottom = 10.dp)) {
                     Footnote(
-                        s.note + "\n" + if (s.selecting) "点照片勾选，按住横着一划可以连续选，长按看大图。"
+                        s.note + "\n" + if (s.selecting) "点照片勾选，按住横着一划可以连续选；点右上角放大镜看大图。"
                         else "点开看大图；点右上角“选择”可以多选，拼成长图发给朋友或 Get笔记。",
                     )
                     if (sources.size > 1 || (s.praiseable && praisedCount > 0 && s.title != AlbumSession.PRAISE)) {
@@ -203,6 +204,18 @@ fun AlbumScreen(vm: MainViewModel, s: AlbumSession) {
             onToggle = {},
             onDismiss = { viewer = null },
             actions = actions,
+        )
+    }
+
+    if (confirm) {
+        val hidden = s.hiddenSelected(praise)
+        DeleteConfirm(
+            vm, s.selectedItems(praise),
+            isMarked = { id -> id in s.selected },
+            onToggle = { id -> s.toggle(id) },
+            onConfirm = { confirm = false; delete(s.selectedItems(praise)) },
+            onDismiss = { confirm = false },
+            note = if (hidden > 0) "只删现在这一类里勾上的，别的标签下勾着的 $hidden 张这次不删。" else null,
         )
     }
 }

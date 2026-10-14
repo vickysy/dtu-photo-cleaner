@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dtu.cleaner.BuildConfig
 import com.dtu.cleaner.util.BackgroundRun
+import com.dtu.cleaner.util.Fmt
 
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
@@ -62,12 +63,18 @@ fun SettingsScreen(vm: MainViewModel) {
             item {
                 InsetGroup(
                     header = "删除方式",
-                    footer = if (st.useTrash) "先放进“最近删除”，30 天内可以恢复。要马上腾出空间，记得去那里点“全部删除”。"
+                    footer = if (st.useTrash) "先放进轻了相册的“最近删除”（首页最下面），30 天内可以恢复；手机自带相册里不一定看得到。要马上腾出空间，记得去那里点“全部删除”。"
                     else "删除后直接腾出空间，但找不回来。",
                 ) {
-                    Choice("删除后", listOf(1 to "进回收站", 0 to "直接删除"), if (st.useTrash) 1 else 0, divider = false) { v ->
+                    Choice("删除后", listOf(1 to "进回收站", 0 to "直接删除"), if (st.useTrash) 1 else 0) { v ->
                         vm.updateSettings { it.copy(useTrash = v == 1) }
                     }
+                    IosRow(
+                        "最近删除", subtitle = "误删了在这里恢复",
+                        value = if (vm.trash.isEmpty()) "空的" else "${Fmt.count(vm.trash.size)} 项",
+                        divider = false,
+                        onClick = { vm.refreshTrash(); vm.push(Screen.Trash) },
+                    )
                 }
             }
             item {

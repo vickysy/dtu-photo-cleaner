@@ -66,6 +66,8 @@ class Library(
     val docKinds: Map<Long, ShotKind>,
     /** 还没识字的图（全相册识字没跑完时提示用） */
     val textsPending: Int,
+    /** 还没识字的截图（刚截的马上识，不等全相册分析） */
+    val shotsNeedText: List<MediaItem>,
     /** 截图里识别出的字（整理笔记用） */
     val shotTexts: Map<Long, String>,
     /** 连续截的一串图（直播、课程），可以整理成笔记 */
@@ -210,15 +212,19 @@ object LibraryBuilder {
         val shotKinds = HashMap<Long, ShotKind>()
         val docKinds = HashMap<Long, ShotKind>()
         var textsPending = 0
+        val shotsNeedText = ArrayList<MediaItem>()
         for (s in images) {
             val t = texts[s.id]?.takeIf { it.modified == s.modified }
             // 没识过、或者识字规则升级了（旧结果先照用，等重新识）
-            if ((t == null || t.version != Analyzer.textVersion(s)) && s.mime != "image/gif" && (s.maxSide == 0 || s.maxSide >= 400)) textsPending++
+            if ((t == null || t.version != Analyzer.textVersion(s)) && s.mime != "image/gif" && (s.maxSide == 0 || s.maxSide >= 400)) {
+                textsPending++
+                if (s.isScreenshot) shotsNeedText.add(s)
+            }
             if (t == null) continue
             // 自己的界面截图、自己拼的长图不分类（旧版叫“D图笔记”）
             val selfMade = "com_dtu_cleaner" in s.name || "com.dtu.cleaner" in s.name || "D图笔记" in s.relPath || "轻了笔记" in s.relPath
             val paper = stored[s.id]?.features?.color?.let { ScreenText.paperFraction(it) } ?: -1f
-            val kind = if (selfMade) null else ScreenText.classify(t.text, t.codes, t.layout, s.isCameraShot, paper)
+            val kind = if (selfMade) null else ScreenText.classify(t.text, t.codes, t.layout, s.isCameraShot, paper, s.name)
             // 证件、聊天记录这些是“找东西”用的，选过保留的也照样列出来
             if (kind != null) docKinds[s.id] = kind
             if (s.isScreenshot) {
@@ -308,6 +314,7 @@ object LibraryBuilder {
             shotKinds = shotKinds,
             docKinds = docKinds,
             textsPending = textsPending,
+            shotsNeedText = shotsNeedText,
             shotTexts = shotTexts,
             sessions = sessions,
             bigVideos = bigVideos,

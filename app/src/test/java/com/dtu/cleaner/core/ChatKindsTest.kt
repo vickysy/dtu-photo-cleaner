@@ -87,4 +87,29 @@ class ChatKindsTest {
         // 旧版存的排布（没有位置、颜色）照样读得出来
         assertEquals(-1, TextLayout.decode("b=5;l=2;r=2;s=2;a=12")!!.wechatGreen)
     }
+
+    /** 对方发来的一大段字（读后感、长评价），下面几条语音：没有绿气泡、没有“昨天 21:30”，以前被分成“文章文字” */
+    private val longMessage = "木妈：读你的作品已经有一段时间了，感触很深。我把你的作品向身边的朋友、同事、家长等做了大范围的推荐。\n" +
+        "下面浅谈一些我的阅读感受和问题。我是带着解决问题的目的去读的。我的问题是如何解决援藏班的孩子在散插班中\n" +
+        "原本基础就薄弱的大部分人跟不上教学进度以及学习效果不佳，难以留存的难题。我知道这已经涉及到了一个复杂的\n" +
+        "学术研究课题了：那就是民族学生如何超越母语的思维习惯了、理解、表达的差异等因素的制约还能通过汉语来学好各门功课。"
+
+    @Test
+    fun longMessageWithVoiceBubblesIsChat() {
+        assertEquals(ShotKind.LONG_TEXT, ScreenText.classify(longMessage, emptyList()))
+        // 语音气泡：喇叭图标常被认成“•))”之类的零碎
+        assertEquals(ShotKind.CHAT, ScreenText.classify(longMessage + "\n•)) 18\"\n60\"\n·)34”\n09:15", emptyList()))
+        // 只有一行像时长的，不算（文章里偶尔有“6″”这种）
+        assertEquals(ShotKind.LONG_TEXT, ScreenText.classify(longMessage + "\n6\"", emptyList()))
+    }
+
+    @Test
+    fun screenshotTakenInWechatChatIsChat() {
+        assertEquals(ShotKind.CHAT, ScreenText.classify(longMessage, emptyList(), name = "Screenshot_20261014_095511_com_tencent_mm_LauncherUI.jpg"))
+        assertEquals(ShotKind.CHAT, ScreenText.classify(longMessage, emptyList(), name = "Screenshot_20261014_095511_com_tencent_mm_ui_chatting_ChattingUI.jpg"))
+        // 公众号文章（网页界面）还是文章
+        assertEquals(ShotKind.LONG_TEXT, ScreenText.classify(longMessage, emptyList(), name = "Screenshot_20261014_095511_com_tencent_mm_plugin_webview_ui_tools_MMWebViewUI.jpg"))
+        // 微信里截的付款码还是付款类（判断在聊天之前）
+        assertEquals(ShotKind.PAY, ScreenText.classify("向商家付款\n付款码", emptyList(), name = "Screenshot_20261014_095511_com_tencent_mm_LauncherUI.jpg"))
+    }
 }

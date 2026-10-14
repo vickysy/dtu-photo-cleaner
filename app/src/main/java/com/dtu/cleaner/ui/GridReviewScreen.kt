@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dtu.cleaner.core.BadShotRules
@@ -35,6 +38,8 @@ fun GridReviewScreen(vm: MainViewModel, s: GridSession, subtitle: String? = null
     val settings by vm.settings.collectAsState()
     val selectedItems = s.selectedItems()
     var viewer by remember { mutableStateOf<Pair<List<GridEntry>, Int>?>(null) }
+    var confirm by remember { mutableStateOf(false) }
+    val hidden = s.hiddenSelected()
     val allTags = remember(s) { s.entries.flatMap { it.tags }.distinct() }
     val allSelected = visible.isNotEmpty() && visible.all { it.item.id in s.selected }
     val gridState = rememberLazyGridState()
@@ -62,13 +67,12 @@ fun GridReviewScreen(vm: MainViewModel, s: GridSession, subtitle: String? = null
             IosToolbar {
                 Column(Modifier.weight(1f)) {
                     Text("已选 ${selectedItems.size} 项", style = IosType.subhead.copy(fontWeight = FontWeight.SemiBold), color = ios.label)
-                    Text("${Fmt.bytes(selectedItems.sumOf { it.size })} · 共 ${visible.size} 项", style = IosType.caption, color = ios.secondary)
+                    Text(
+                        "${Fmt.bytes(selectedItems.sumOf { it.size })} · 共 ${visible.size} 项" + if (hidden > 0) " · 别的标签下勾着的 $hidden 项不删" else "",
+                        style = IosType.caption, color = ios.secondary,
+                    )
                 }
-                CapsuleButton("删除", color = ios.red, enabled = selectedItems.isNotEmpty(), onClick = {
-                    vm.delete(selectedItems, vm.deleteModeFromSettings(), s.explicitlyKept()) { ids ->
-                        ids.forEach { s.deleted[it] = Unit; s.selected.remove(it) }
-                    }
-                })
+                CapsuleButton("删除", color = ios.red, enabled = selectedItems.isNotEmpty(), onClick = { confirm = true })
             }
         },
     ) {
@@ -82,6 +86,7 @@ fun GridReviewScreen(vm: MainViewModel, s: GridSession, subtitle: String? = null
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(Modifier.padding(top = 12.dp, bottom = 10.dp)) {
+                    PreviewHint(vm, Modifier.padding(bottom = 10.dp))
                     Footnote((subtitle?.let { "$it · 共 ${s.entries.size} 张\n" } ?: "") + (s.note ?: hint(s.kind, settings.screenshotDays)))
                     if (s.kind == GridKind.AESTHETIC) {
                         SegmentedControl(
@@ -145,18 +150,47 @@ fun GridReviewScreen(vm: MainViewModel, s: GridSession, subtitle: String? = null
             isMarked = { id -> id in s.selected },
             onToggle = { id -> if (id in s.selected) s.selected.remove(id) else s.selected[id] = Unit },
             onDismiss = { viewer = null },
-            actions = listOf(hideFolder),
+            actions = buildList {
+                // 截图都能设为好评：客户、学员夸你的截图没认成聊天记录也能收进“好评”
+                if (s.kind == GridKind.SCREENSHOTS || s.kind == GridKind.DOCS) add(
+                    ViewerAction(
+                        Icons.Rounded.Star, { id -> if (id in vm.praise) "取消好评" else "设为好评" },
+                        tint = { id -> if (id in vm.praise) Gold else Color.White },
+                    ) { id ->
+                        val on = id !in vm.praise
+                        vm.setPraise(listOf(id), on)
+                        if (on) s.selected.remove(id) // 设为好评的不能再勾着要删
+                    },
+                )
+                add(hideFolder)
+            },
+        )
+    }
+
+    if (confirm) {
+        DeleteConfirm(
+            vm, s.selectedItems(),
+            isMarked = { id -> id in s.selected },
+            onToggle = { id -> if (id in s.selected) s.selected.remove(id) else s.selected[id] = Unit },
+            onConfirm = {
+                confirm = false
+                vm.delete(s.selectedItems(), vm.deleteModeFromSettings(), s.explicitlyKept(), onRestored = s::onRestored) { ids ->
+                    ids.forEach { s.deleted[it] = Unit; s.selected.remove(it) }
+                }
+            },
+            onDismiss = { confirm = false },
+            note = if (hidden > 0) "只删现在这一类里勾上的，别的标签下勾着的 $hidden 项这次不删。" else null,
         )
     }
 }
 
 private fun hint(kind: GridKind, days: Int) = when (kind) {
-    GridKind.BAD -> "明显拍废的已经勾选；标着“可能模糊”的拿不准，没勾，你看一眼再决定。点照片切换，按住横着一划可以连续选，长按看大图。"
-    GridKind.SCREENSHOTS -> "认出了截图里的字：取件码、验证码、付款码这类 3 天前的、以及超过 $days 天的截图已经勾选；证件永远不勾。点照片切换，按住横着一划可以连续选，长按看大图。"
-    GridKind.BIG_VIDEOS -> "按大小排序，最占地方的在前面。没有帮你勾选，点一下选中，横着一划连续选，长按播放。"
-    GridKind.VIDEOS -> "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，长按播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里挑。"
-    GridKind.APP_IMAGES -> "微信、小红书、得到这些 App 存到相册里的图，按来源筛选。没有帮你勾选。点照片切换，按住横着一划可以连续选，长按看大图。"
-    GridKind.DOCS -> "按图里的字分出来的。用完就没用的（取件码、验证码、付款码、二维码）3 天前的已经勾选，其余的没勾；证件永远不会建议删除。长按看大图。"
-    GridKind.RECENT -> "刚拍的照片现场打了分（1–10 分，看构图色彩）。4.3 分及以下、明显拍糊、连拍里不是最好的已经勾选；有人闭眼的只标出来。分数只是参考，长按看大图再决定。"
-    GridKind.AESTHETIC -> "相机拍的照片按美感分（1–10 分）排序，看构图和色彩；4.3 分及以下标红，5.5 分及以上标绿。没有帮你勾选，分数只是参考。按住照片横着一划可以连续选，划开后再往下拖能选一大片；长按看大图。"
+    GridKind.BAD -> "明显拍废的已经勾选；标着“可能模糊”的拿不准，没勾，你看一眼再决定。点照片切换，按住横着一划可以连续选；点右上角放大镜看大图。"
+    GridKind.SCREENSHOTS -> "认出了截图里的字：取件码、验证码、付款码这类 3 天前的、以及超过 $days 天的截图已经勾选；证件永远不勾。点照片切换，按住横着一划可以连续选；点右上角放大镜看大图，客户、学员夸你的截图在大图里点“设为好评”。"
+    GridKind.BIG_VIDEOS -> "按大小排序，最占地方的在前面。没有帮你勾选，点一下选中，横着一划连续选；点右上角放大镜播放。"
+    GridKind.VIDEOS -> "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，点右上角放大镜播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里挑。"
+    GridKind.APP_IMAGES -> "微信、小红书、得到这些 App 存到相册里的图，按来源筛选。没有帮你勾选。点照片切换，按住横着一划可以连续选；点右上角放大镜看大图。"
+    GridKind.DOCS -> "按图里的字分出来的。用完就没用的（取件码、验证码、付款码、二维码）3 天前的已经勾选，其余的没勾；证件永远不会建议删除。点右上角放大镜看大图。"
+    GridKind.RECENT -> "刚拍的照片现场打了分（1–10 分，看构图色彩）。明显拍废的、连拍里不是最好的已经勾选；分数低、有人闭眼的只标出来，没勾——分数只是参考，点右上角放大镜看大图再决定。"
+    GridKind.AESTHETIC -> "相机拍的照片按美感分（1–10 分）排序，看构图和色彩；4.3 分及以下标红，5.5 分及以上标绿。没有帮你勾选，分数只是参考。按住照片横着一划可以连续选，划开后再往下拖能选一大片；点右上角放大镜看大图。"
 }

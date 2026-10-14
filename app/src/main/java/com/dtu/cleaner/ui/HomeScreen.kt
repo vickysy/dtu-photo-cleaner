@@ -200,10 +200,10 @@ fun HomeScreen(vm: MainViewModel, onRequestFullAccess: () -> Unit) {
             }
 
             item {
-                InsetGroup(footer = "删掉的先放在这里，30 天后自动彻底删除。放在这里时仍然占空间。") {
+                InsetGroup(footer = "在轻了相册里删掉的先放在这里，误删了点进去恢复；30 天后自动彻底删除。放在这里时仍然占空间。") {
                     IosRow(
                         "最近删除",
-                        subtitle = if (vm.trash.isEmpty()) "空的" else "${Fmt.count(vm.trash.size)} 项",
+                        subtitle = if (vm.trash.isEmpty()) "空的" else "${Fmt.count(vm.trash.size)} 项 · 误删了在这里恢复",
                         value = if (vm.trash.isEmpty()) null else Fmt.bytes(vm.trash.sumOf { it.size }),
                         icon = Icons.Rounded.Delete, iconBg = ios.gray, divider = false,
                         onClick = { vm.refreshTrash(); vm.push(Screen.Trash) },
@@ -414,7 +414,7 @@ private fun Reclaim(vm: MainViewModel, lib: Library, p: Progress, next: Category
         Text("相册还能轻", style = IosType.subhead, color = ios.secondary)
         BigNumber(bytes)
         Text(
-            "约 ${Fmt.count(count)} 张，已经替你挑好了" + (next?.let { "，先清${it.title}" } ?: ""),
+            "约 ${Fmt.count(count)} 张可以清，删之前都会给你过目" + (next?.let { "，先清${it.title}" } ?: ""),
             style = IosType.subhead, color = ios.secondary,
         )
     } else {
@@ -666,8 +666,8 @@ private fun AestheticCard(lib: Library, onClick: () -> Unit) {
 private fun TipsCard(onDismiss: () -> Unit) {
     InsetGroup(header = "用之前先知道") {
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Tip(Icons.Rounded.CheckCircle, ios.brand, "勾上的是要删的", "没勾的会留下。每组照片、每个场景都能单独删，不会连带别的。")
-            Tip(Icons.Rounded.Delete, ios.gray, "删了先进“最近删除”", "30 天内能恢复。清空“最近删除”才真正腾出空间。")
+            Tip(Icons.Rounded.CheckCircle, ios.brand, "勾上的是要删的", "没勾的会留下。点照片右上角的放大镜看大图。删之前会再给你看一眼要删的。")
+            Tip(Icons.Rounded.Delete, ios.gray, "删了先进首页最下面的“最近删除”", "误删了在那里恢复，30 天内都行；手机自带相册里不一定看得到。清空“最近删除”才真正腾出空间。")
             Tip(Icons.Rounded.Lock, ios.yellow, "照片不出手机", "分析全在手机里完成，没有联网权限。")
             Row {
                 Spacer(Modifier.weight(1f))

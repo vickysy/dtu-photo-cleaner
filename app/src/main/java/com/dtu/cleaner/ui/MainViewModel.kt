@@ -8,7 +8,9 @@ import android.os.StatFs
 import android.os.storage.StorageManager
 import android.provider.MediaStore
 import androidx.activity.result.IntentSenderRequest
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +79,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var showTips by mutableStateOf(!ui.getBoolean("tipsSeen", false))
         private set
 
+    /** 清理页面顶上“怎么看大图”的提示，点过“知道了”就不再出现 */
+    var showPreviewHint by mutableStateOf(!ui.getBoolean("previewHintSeen", false))
+        private set
+
     /** 上次意外退出了，问用户要不要发问题报告 */
     var crashed by mutableStateOf(AppLog.hasPendingCrash())
         private set
@@ -97,12 +103,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             progress.map { it.finishedAt }.distinctUntilChanged().drop(1).collect { refresh() }
         }
+        // 截图识完字就刷新一次：后面的步骤（视频、全部照片识字）可能要跑很久，分好类的截图不用等它们
+        viewModelScope.launch {
+            progress.map { it.phase == com.dtu.cleaner.analysis.Phase.TEXT }.distinctUntilChanged().drop(1).collect { inText -> if (!inText) refresh() }
+        }
         viewModelScope.launch { settings.drop(1).collect { refresh() } }
     }
 
     private var lastRefreshAt = 0L
 
-    /** 回到 App 时调用：权限变了、或者离上次读相册超过一分钟（期间可能拍了新照片），就重新读 */
+    /** 系统相册的变更号：拍了、截了、删了照片都会变 */
+    private var mediaGeneration = -1L
+
+    /** 回到 App 时调用：权限变了、相册有变化（比如刚截了图）、或者离上次读相册超过一分钟，就重新读 */
     fun onAccessChanged(a: Access) {
         val changed = a != access
         access = a
@@ -111,7 +124,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             openRecent()
         }
         val stale = System.currentTimeMillis() - lastRefreshAt > 60_000
-        if (a != Access.NONE && (changed || library == null || (stale && current == Screen.Home))) refresh(autoAnalyze = true)
+        val gen = runCatching { MediaStore.getGeneration(app, MediaStore.VOLUME_EXTERNAL_PRIMARY) }.getOrDefault(-1L)
+        val mediaChanged = gen != mediaGeneration
+        mediaGeneration = gen
+        if (a != Access.NONE && (changed || library == null || mediaChanged || (stale && current == Screen.Home))) refresh(autoAnalyze = true)
+    }
+
+    private var quickTextsRunning = false
+
+    /**
+     * 刚截的图马上识字分类（几秒钟），不用等全相册分析：截了聊天记录，打开 App 就在“聊天记录”里，能设为好评。
+     * 只看最近 3 天的截图、最多 50 张。全相册分析在跑也照样识：它开始时列好的清单里没有新截的图。
+     */
+    private fun quickNewShots(lib: com.dtu.cleaner.data.Library) {
+        if (quickTextsRunning) return
+        val since = System.currentTimeMillis() - 3 * 86_400_000L
+        val shots = lib.shotsNeedText.filter { it.timeMs >= since }.sortedByDescending { it.timeMs }.take(50)
+        if (shots.isEmpty()) return
+        quickTextsRunning = true
+        viewModelScope.launch {
+            try {
+                val n = withContext(Dispatchers.Default) { com.dtu.cleaner.analysis.Analyzer(app, app.db, app.settings.value).quickTexts(shots) }
+                if (n > 0) refresh()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLog.event("新截图识字出错", e)
+            } finally {
+                quickTextsRunning = false
+            }
+        }
     }
 
     fun refresh(autoAnalyze: Boolean = false) {
@@ -130,6 +172,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         autoStarted = true
                         startAnalysis()
                     }
+                    quickNewShots(lib)
                 } while (refreshAgain)
                 refreshStorage()
                 refreshTrash()
@@ -224,6 +267,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun dismissTips() {
         showTips = false
         ui.edit().putBoolean("tipsSeen", true).apply()
+    }
+
+    fun dismissPreviewHint() {
+        showPreviewHint = false
+        ui.edit().putBoolean("previewHintSeen", true).apply()
     }
 
     fun dismissCrash() {
@@ -327,7 +375,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun openPraise() {
         val lib = library ?: return
         val entries = praise.mapNotNull { lib.byId[it] }.sortedByDescending { it.timeMs }.map { GridEntry(it, false, listOf(it.source)) }
-        push(Screen.Album(AlbumSession("好评", "设为好评的聊天截图都在这里，不会被建议删除。多选可以拼成一张长图，发朋友圈、做宣传都方便。", entries, praiseable = true)))
+        push(Screen.Album(AlbumSession("好评", "设为好评的截图都在这里，不会被建议删除。多选可以拼成一张长图，发朋友圈、做宣传都方便。截图在别处（截图与录屏、文章与文件……）看大图时，也能点“设为好评”收进来。", entries, praiseable = true)))
     }
 
     /** 截图笔记里的一串截图：从早到晚排好，挑几张拼长图、整理文字、分享或删除 */
@@ -461,7 +509,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** 给刚拍的照片打标签、决定预先勾哪些：低分、明显拍糊、连拍里不是最好的 */
+    /** 给刚拍的照片打标签、决定预先勾哪些：明显拍废的、连拍里不是最好的。分数低只标出来，不勾（分低不等于该删） */
     private fun recentEntries(items: List<MediaItem>): List<GridEntry> {
         val settings = app.settings.value
         val stored = app.db.loadAll()
@@ -489,9 +537,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (m.id in similar) tags.add("和别的很像")
             if (eyesClosed) tags.add("有人闭眼")
             val suggested = !m.favorite && (
-                (score != null && aesIsLow(score)) ||
-                    bad.any { it != com.dtu.cleaner.core.BadReason.MAYBE_BLURRY } ||
-                    m.id in worseInBurst
+                bad.any { it != com.dtu.cleaner.core.BadReason.MAYBE_BLURRY } || m.id in worseInBurst
                 )
             GridEntry(m, suggested, tags, score)
         }
@@ -566,6 +612,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val chunks: List<List<MediaItem>>,
         val mode: DeleteMode,
         val reviewed: Collection<Long>,
+        val onRestored: ((Set<Long>) -> Unit)?,
         val onDone: (Set<Long>) -> Unit,
     ) {
         var index = 0
@@ -574,15 +621,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var job: DeleteJob? = null
 
-    /** 照片/视频交给系统删除或恢复；[reviewed] 是用户明确保留的，以后不再提示。 */
-    fun delete(items: List<MediaItem>, mode: DeleteMode, reviewed: Collection<Long> = emptyList(), onDone: (Set<Long>) -> Unit = {}) {
+    /**
+     * 照片/视频交给系统删除或恢复；[reviewed] 是用户明确保留的，以后不再提示。
+     * 放进回收站以后提示里有“撤销”，点了就恢复，[onRestored] 告诉页面哪些回来了。
+     */
+    fun delete(
+        items: List<MediaItem>,
+        mode: DeleteMode,
+        reviewed: Collection<Long> = emptyList(),
+        onRestored: ((Set<Long>) -> Unit)? = null,
+        onDone: (Set<Long>) -> Unit = {},
+    ) {
         if (items.isEmpty()) {
             if (reviewed.isNotEmpty()) viewModelScope.launch(Dispatchers.IO) { app.db.addReviewed(reviewed) }
             onDone(emptySet())
             return
         }
         if (job != null) return
-        val j = DeleteJob(items.chunked(CHUNK), mode, reviewed, onDone)
+        val j = DeleteJob(items.chunked(CHUNK), mode, reviewed, onRestored, onDone)
         job = j
         launchChunk(j)
     }
@@ -617,7 +673,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun answerTrashFallback(deleteNow: Boolean) {
         val f = trashFallback ?: return
         trashFallback = null
-        if (deleteNow) delete(f.items, DeleteMode.DELETE, f.reviewed, f.onDone) else f.onDone(emptySet())
+        if (deleteNow) delete(f.items, DeleteMode.DELETE, f.reviewed, onDone = f.onDone) else f.onDone(emptySet())
     }
 
     fun onDeleteResult(ok: Boolean) {
@@ -659,14 +715,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             refreshStorage()
             if (items.isNotEmpty()) {
                 val n = items.size
-                snackbar.showSnackbar(
-                    when (j.mode) {
-                        DeleteMode.TRASH -> "相册轻了 ${Fmt.bytes(bytes)}（$n 项）。在“最近删除”里清空后，手机才真正腾出空间"
-                        DeleteMode.DELETE -> "轻了 ${Fmt.bytes(bytes)}，彻底删除 $n 项"
-                        DeleteMode.PURGE -> "轻了 ${Fmt.bytes(bytes)}，彻底删除 $n 项"
-                        DeleteMode.RESTORE -> "已恢复 $n 项"
-                    },
-                )
+                if (j.mode == DeleteMode.TRASH) {
+                    // 误删了马上能撤销；过了也能去“最近删除”找回
+                    val r = snackbar.showSnackbar(
+                        "删了 $n 项（${Fmt.bytes(bytes)}），先放在首页最下面的「最近删除」里，30 天内能找回",
+                        actionLabel = "撤销", duration = SnackbarDuration.Long,
+                    )
+                    if (r == SnackbarResult.ActionPerformed) {
+                        delete(items, DeleteMode.RESTORE) { restored -> if (restored.isNotEmpty()) j.onRestored?.invoke(restored) }
+                    }
+                } else {
+                    snackbar.showSnackbar(
+                        when (j.mode) {
+                            DeleteMode.DELETE, DeleteMode.PURGE -> "轻了 ${Fmt.bytes(bytes)}，彻底删除 $n 项"
+                            else -> "已恢复 $n 项，回到相册里了"
+                        },
+                    )
+                }
             }
         }
         if (ids.isNotEmpty()) dirty = true

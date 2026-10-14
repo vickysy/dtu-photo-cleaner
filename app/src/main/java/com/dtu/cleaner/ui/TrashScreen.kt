@@ -72,7 +72,8 @@ fun TrashScreen(vm: MainViewModel) {
         ) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Footnote(
-                    "照片和视频会在显示的天数后彻底删除。在这里时仍然占用空间，想马上腾出空间，点“全部删除”。点照片可以只处理选中的，按住横着一划可以连续选。" +
+                    "在轻了相册里删掉的照片和视频都在这里（手机自带相册的“最近删除”里不一定看得到）。误删了点“恢复”，就回到相册里了。" +
+                        "它们会在显示的天数后彻底删除；在这里时仍然占用空间，想马上腾出空间，点“全部删除”。点照片可以只处理选中的，按住横着一划可以连续选。" +
                         if (items.isNotEmpty()) "\n共 ${items.size} 项 · ${Fmt.bytes(items.sumOf { it.size })}" else "",
                     Modifier.padding(top = 12.dp, bottom = 12.dp),
                 )

@@ -47,11 +47,14 @@ import com.dtu.cleaner.util.Fmt
 
 /**
  * 场景精选：同一个地方连续拍了很多张，每个场景挑几张精华留下，其余的默认勾选删除。
+ * 要删的照片默认摊开在每个场景下面；点删除先弹确认框，能一张张看大图再删。
  */
 @Composable
 fun SceneScreen(vm: MainViewModel, s: SceneSession) {
     var viewer by remember { mutableStateOf<Pair<Scene, Int>?>(null) }
-    var confirmAll by remember { mutableStateOf(false) }
+    /** 要删的场景（按 key 记，确认框开着时勾选变了也能跟着算） */
+    var pending by remember { mutableStateOf<Set<Long>?>(null) }
+    var pendingAll by remember { mutableStateOf(false) }
     val scenes = s.active
     val all = s.selectedItems()
     val listState = rememberLazyListState()
@@ -67,7 +70,7 @@ fun SceneScreen(vm: MainViewModel, s: SceneSession) {
     fun deleteScenes(targets: List<Scene>) {
         val items = targets.flatMap { s.selectedIn(it) }
         val kept = targets.flatMap { s.keptIn(it) }
-        vm.delete(items, vm.deleteModeFromSettings(), kept) { ids ->
+        vm.delete(items, vm.deleteModeFromSettings(), kept, onRestored = s::onRestored) { ids ->
             s.onDeleted(ids)
             if (ids.isNotEmpty()) s.markDone(targets.filter { s.selectedIdsIn(it).isEmpty() })
         }
@@ -94,7 +97,10 @@ fun SceneScreen(vm: MainViewModel, s: SceneSession) {
                         style = IosType.caption, color = ios.secondary,
                     )
                 }
-                CapsuleButton("全部删除…", color = ios.red, filled = false, enabled = all.isNotEmpty(), onClick = { confirmAll = true })
+                CapsuleButton("全部删除…", color = ios.red, filled = false, enabled = all.isNotEmpty(), onClick = {
+                    pendingAll = true
+                    pending = s.active.map { it.key }.toSet()
+                })
             }
         }),
     ) {
@@ -106,7 +112,8 @@ fun SceneScreen(vm: MainViewModel, s: SceneSession) {
         ) {
             item(key = "hint") {
                 Column {
-                    Footnote("同一个地方连续拍了很多张时，帮你挑出几张精华：拍得清楚、构图好，而且尽量是不同的画面。其余的已经勾选。看好一个场景就点它自己的“删除”，只删这一个场景，不会动别的。")
+                    PreviewHint(vm, Modifier.padding(bottom = 10.dp))
+                    Footnote("同一个地方连续拍了很多张时，帮你挑出几张精华：拍得清楚、构图好，而且尽量是不同的画面。其余的已经勾选，摊开在每个场景下面，不想删的点一下。看好一个场景就点它自己的“删除”，只删这一个场景，不会动别的。")
                     SegmentedControl(
                         listOf(false to "按时间", true to "按美感"), s.sortByAes, { s.sortByAes = it },
                         Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp).fillMaxWidth(),
@@ -118,27 +125,13 @@ fun SceneScreen(vm: MainViewModel, s: SceneSession) {
                 SceneCard(
                     s, sc, tiles,
                     onOpen = { i -> viewer = sc to i },
-                    onDelete = { deleteScenes(listOf(sc)) },
+                    onDelete = { pendingAll = false; pending = setOf(sc.key) },
                     onKeep = { keepScene(sc) },
                 )
             }
         }
     }
 
-    if (confirmAll) {
-        val trash = vm.deleteModeFromSettings() == DeleteMode.TRASH
-        IosAlert(
-            title = "删除 ${scenes.size} 个场景里的 ${all.size} 张？",
-            message = "包括你还没打开看过的场景。每个场景按现在的勾选处理，精华留下，其余 ${Fmt.bytes(all.sumOf { it.size })} " +
-                (if (trash) "移到“最近删除”，30 天内能恢复。" else "直接彻底删除，无法恢复。") +
-                "\n只想删一个场景，点那个场景卡片上的“删除”。",
-            actions = listOf(
-                AlertAction("取消", AlertAction.Role.Cancel) { confirmAll = false },
-                AlertAction("全部删除", AlertAction.Role.Destructive) { confirmAll = false; deleteScenes(s.active) },
-            ),
-            onDismiss = { confirmAll = false },
-        )
-    }
 
     viewer?.let { (sc, start) ->
         val members = s.ordered(s.visible(sc))
@@ -155,6 +148,18 @@ fun SceneScreen(vm: MainViewModel, s: SceneSession) {
             isMarked = { id -> s.isMarked(id) },
             onToggle = { id -> s.toggle(id) },
             onDismiss = { viewer = null },
+        )
+    }
+
+    pending?.let { keys ->
+        val targets = s.active.filter { it.key in keys }
+        DeleteConfirm(
+            vm, targets.flatMap { s.selectedIn(it) },
+            isMarked = { id -> s.isMarked(id) },
+            onToggle = { id -> s.toggle(id) },
+            onConfirm = { pending = null; deleteScenes(targets) },
+            onDismiss = { pending = null },
+            note = if (pendingAll) "${targets.size} 个场景里勾上的，包括还没滑到的场景。每个场景的精华会留下。" else null,
         )
     }
 }
@@ -231,7 +236,7 @@ private fun SceneCard(s: SceneSession, sc: Scene, tiles: TileRegistry, onOpen: (
                     }
                 }
                 Text(
-                    "点照片切换 删/留，按住横着一划可以连续切换，长按看大图",
+                    "点照片切换 删/留，按住横着一划可以连续切换；点右上角放大镜看大图",
                     style = IosType.caption, color = ios.secondary, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
@@ -251,6 +256,7 @@ private fun SceneCard(s: SceneSession, sc: Scene, tiles: TileRegistry, onOpen: (
     }
 }
 
+/** 留下的精华：没有勾选圈，点一下看大图（改删/留在下面的格子里点） */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun HighlightTile(s: SceneSession, p: PhotoInfo, star: Boolean, showScore: Boolean, onOpen: () -> Unit) {
@@ -258,7 +264,7 @@ private fun HighlightTile(s: SceneSession, p: PhotoInfo, star: Boolean, showScor
         Modifier.size(132.dp).clip(RoundedCornerShape(10.dp))
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() }, indication = null,
-                onClick = onOpen, onLongClick = { s.toggle(p.id) },
+                onClick = onOpen, onLongClick = onOpen,
             ),
     ) {
         ThumbImage(s.itemOf(p.id)!!, 400, Modifier.fillMaxSize())

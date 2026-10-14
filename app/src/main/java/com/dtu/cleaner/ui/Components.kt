@@ -2,6 +2,7 @@ package com.dtu.cleaner.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -12,14 +13,17 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.ZoomIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
@@ -79,8 +83,9 @@ private val overlayText = TextStyle(
 )
 
 /**
- * “照片”App 风格的方格：点一下勾选/取消，长按看大图。勾选 = 要删除。
- * 左上角原因标签，右下角勾选圈，左下角视频时长或附加信息。
+ * “照片”App 风格的方格：点一下勾选/取消，点右上角放大镜或长按看大图。勾选 = 要删除。
+ * 左上角原因标签，右上角放大镜，右下角勾选圈，左下角视频时长或附加信息。
+ * 没有勾选圈的时候（只是看图）点一下就是看大图，不显示放大镜。
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -108,7 +113,8 @@ fun PhotoCell(
     ) {
         ThumbImage(item, px, Modifier.fillMaxSize())
         if (selectable && selected) Box(Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.22f)))
-        if (label != null) Box(Modifier.align(Alignment.TopStart).padding(4.dp)) {
+        // 标签太长时截掉，别盖住右上角的放大镜
+        if (label != null) Box(Modifier.align(Alignment.TopStart).padding(start = 4.dp, top = 4.dp, end = if (selectable) 28.dp else 4.dp)) {
             when {
                 labelIcon != null -> PhotoBadge(label, icon = labelIcon, iconTint = Gold)
                 labelBg != null -> PhotoBadge(label, bg = labelBg)
@@ -122,7 +128,26 @@ fun PhotoCell(
             }
             if (footer != null) Text((if (item.isVideo) " · " else "") + footer, style = overlayText)
         }
-        if (selectable) SelectCircle(selected, Modifier.align(Alignment.BottomEnd).padding(5.dp))
+        if (selectable) {
+            SelectCircle(selected, Modifier.align(Alignment.BottomEnd).padding(5.dp))
+            ZoomButton(onOpen, Modifier.align(Alignment.TopEnd))
+        }
+    }
+}
+
+/** 格子右上角的放大镜：点它看大图。按的范围比图标大一圈，好点中 */
+@Composable
+fun ZoomButton(onClick: () -> Unit, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Rounded.ZoomIn) {
+    Box(
+        modifier.size(32.dp).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+        contentAlignment = Alignment.TopEnd,
+    ) {
+        Box(
+            Modifier.padding(4.dp).size(22.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.4f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, "看大图", tint = Color.White, modifier = Modifier.size(16.dp))
+        }
     }
 }
 

@@ -48,19 +48,19 @@ private class DocGroup(
     val kinds: Set<ShotKind>,
     val note: String,
     val icon: ImageVector,
-    /** 能设为好评 */
-    val praiseable: Boolean = false,
+    /** 能设为好评（证件、用完就没用的不能） */
+    val praiseable: Boolean = true,
     /** 清理用的类：一打开就在选择状态，3 天前的已勾上 */
     val cleanup: Boolean = false,
 )
 
 private val GROUPS = listOf(
-    DocGroup("证件", setOf(ShotKind.ID), "身份证、银行卡、护照、驾驶证、社保卡、营业执照……永远不会建议删除。证件上的长串号码在手机里也是打了码存的。", Icons.Rounded.Badge),
-    DocGroup("聊天记录", setOf(ShotKind.CHAT), "微信聊天截图（认绿色气泡），和中间带时间的聊天记录。学员、客户夸你的，可以设为好评单独收着。", Icons.Rounded.Forum, praiseable = true),
+    DocGroup("证件", setOf(ShotKind.ID), "身份证、银行卡、护照、驾驶证、社保卡、营业执照……永远不会建议删除。证件上的长串号码在手机里也是打了码存的。", Icons.Rounded.Badge, praiseable = false),
+    DocGroup("聊天记录", setOf(ShotKind.CHAT), "微信聊天截图（认绿色气泡），和中间带时间的聊天记录。学员、客户夸你的，可以设为好评单独收着。", Icons.Rounded.Forum),
     DocGroup("文章与文件", setOf(ShotKind.LONG_TEXT, ShotKind.DOC), "文章、笔记、PPT 截图，和拍的文件、书页、课件。", Icons.AutoMirrored.Rounded.Article),
     DocGroup("票据行程", setOf(ShotKind.TICKET), "车票、机票、门票、发票、小票。", Icons.AutoMirrored.Rounded.ReceiptLong),
     DocGroup("订单物流", setOf(ShotKind.ORDER), "订单、退款、物流截图。", Icons.Rounded.LocalShipping),
-    DocGroup("用完就没用的", setOf(ShotKind.PICKUP, ShotKind.CODE, ShotKind.PAY, ShotKind.QR), "取件码、验证码、付款码、二维码。3 天前的已经勾选。", Icons.Rounded.QrCode2, cleanup = true),
+    DocGroup("用完就没用的", setOf(ShotKind.PICKUP, ShotKind.CODE, ShotKind.PAY, ShotKind.QR), "取件码、验证码、付款码、二维码。3 天前的已经勾选。", Icons.Rounded.QrCode2, praiseable = false, cleanup = true),
 )
 
 private fun groupsOf(lib: Library): List<Pair<DocGroup, List<MediaItem>>> =
