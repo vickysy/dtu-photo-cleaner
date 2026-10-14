@@ -2,7 +2,7 @@ import SwiftUI
 
 /**
  视频场景精选：同一个场景拍了好几段，推荐留几段精华，其余默认勾选。
- 几段视频内容往往不一样，长按播放看一眼；每个场景的“删除”只删这个场景，“全部删除…”要先确认。
+ 几段视频内容往往不一样，点放大镜播放看一眼；每个场景的“删除”只删这个场景，“全部删除…”要先确认。
  */
 struct VideoSceneView: View {
     @EnvironmentObject var model: AppModel
@@ -10,7 +10,7 @@ struct VideoSceneView: View {
     @State private var selected = Set<String>()
     @State private var initialized: Set<String> = []
     @State private var viewer: ViewerTarget?
-    @State private var confirmAll = false
+    @State private var deleting: DeleteRequest?
     @State private var drag = DragSelector()
 
     private func scene(_ sc: VideoScene) -> VideoScene {
@@ -24,8 +24,9 @@ struct VideoSceneView: View {
         let chosenBytes = chosenIds.reduce(Int64(0)) { $0 + (model.library?.byId[$1]?.size ?? 0) }
         ScrollView {
             VStack(spacing: 18) {
-                Footnote(text: "同一个地方接连拍了好几段视频时，帮你推荐留哪几段：时长够、画面清楚、构图好看，而且尽量是不同的内容。其余已经勾选。几段视频内容往往不一样，长按播放看一眼再删。")
+                Footnote(text: "同一个地方接连拍了好几段视频时，帮你推荐留哪几段：时长够、画面清楚、构图好看，而且尽量是不同的内容。其余已经勾选。几段视频内容往往不一样，点放大镜播放看一眼再删。")
                     .padding(.top, 8)
+                PreviewHint()
                 if scenes.isEmpty { Text("视频场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
                 ForEach(scenes) { sc in
                     VideoSceneCard(scene: sc, selected: $selected, drag: drag,
@@ -36,7 +37,8 @@ struct VideoSceneView: View {
                                        let keep = rebuilt.keepIds
                                        rebuilt.members.filter { !keep.contains($0.id) }.forEach { selected.insert($0.id) }
                                    },
-                                   open: { items, i in viewer = ViewerTarget(items: items, start: i) })
+                                   open: { items, i in viewer = ViewerTarget(items: items, start: i) },
+                                   confirm: { deleting = $0 })
                 }
             }
             .padding(.bottom, 20)
@@ -49,21 +51,22 @@ struct VideoSceneView: View {
         .safeAreaInset(edge: .bottom) {
             if !scenes.isEmpty {
                 BottomBar(title: "还有 \(scenes.count) 个场景", subtitle: chosenIds.isEmpty ? "都设成了全部保留" : "全部按勾选处理：删 \(chosenIds.count) 段 · \(Fmt.bytes(chosenBytes))") {
-                    CapsuleButton(title: "全部删除…", color: .danger, filled: false, enabled: !chosenIds.isEmpty) { confirmAll = true }
+                    CapsuleButton(title: "全部删除…", color: .danger, filled: false, enabled: !chosenIds.isEmpty) {
+                        deleting = DeleteRequest(items: chosenIds.compactMap { model.library?.byId[$0] },
+                                                 note: "包括 \(scenes.count) 个场景里你还没看过的。每个场景按现在的勾选处理。") { items in
+                            let ids = Set(items.map { $0.id })
+                            let kept = scenes.flatMap { $0.members.map { $0.id } }.filter { !ids.contains($0) }
+                            Task { await model.delete(items, kept: kept) }
+                        }
+                    }
                 }
             }
         }
         .onAppear { initSelection(scenes) }
         .onChange(of: scenes.map { $0.id }) { initSelection(scenes) }
-        .alert("删除 \(scenes.count) 个场景里的 \(chosenIds.count) 段视频？", isPresented: $confirmAll) {
-            Button("取消", role: .cancel) {}
-            Button("全部删除", role: .destructive) {
-                let kept = scenes.flatMap { $0.members.map { $0.id }.filter { !selected.contains($0) } }
-                Task { await model.delete(chosenIds.compactMap { model.library?.byId[$0] }, kept: kept) }
-            }
-        } message: {
-            Text("包括你还没播放看过的场景。每个场景按现在的勾选处理，推荐的留下，其余 \(Fmt.bytes(chosenBytes)) 移到「最近删除」，30 天内能恢复。只想删一个场景，点那个场景的“删除”。")
-        }
+        .deleteConfirm($deleting, isMarked: { selected.contains($0) }, onToggle: { id in
+            if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
+        })
         .fullScreenCover(item: $viewer) { v in
             Viewer(items: v.items, index: v.start, isMarked: { selected.contains($0) }, onToggle: { id in
                 if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
@@ -94,6 +97,7 @@ private struct VideoSceneCard: View {
     let drag: DragSelector
     let setKeep: (Int) -> Void
     let open: ([MediaItem], Int) -> Void
+    let confirm: (DeleteRequest) -> Void
 
     var body: some View {
         let items = displayIds(scene).compactMap { model.library?.byId[$0] }
@@ -122,7 +126,7 @@ private struct VideoSceneCard: View {
                         .dragSelectCell(m.id, drag)
                 }
             }
-            Text("点视频切换删/留，按住横着一划可以连续切换，长按播放。打勾的会删掉。").font(.caption).foregroundStyle(.secondary)
+            Text("点视频切换删/留，按住横着一划可以连续切换，点放大镜播放。打勾的会删掉。").font(.caption).foregroundStyle(.secondary)
             HStack {
                 if !dropped.isEmpty {
                     Button("全部保留") { model.markReviewed(scene.members.map { $0.id }) }
@@ -133,8 +137,11 @@ private struct VideoSceneCard: View {
                     CapsuleButton(title: "完成") { model.markReviewed(scene.members.map { $0.id }) }
                 } else {
                     CapsuleButton(title: "删除 \(dropped.count) 段 · \(Fmt.bytes(bytes))", color: .danger) {
-                        let kept = scene.members.filter { !selected.contains($0.id) }.map { $0.id }
-                        Task { await model.delete(dropped.compactMap { model.library?.byId[$0.id] }, kept: kept) }
+                        confirm(DeleteRequest(items: dropped.compactMap { model.library?.byId[$0.id] }) { items in
+                            let ids = Set(items.map { $0.id })
+                            let kept = scene.members.map { $0.id }.filter { !ids.contains($0) }
+                            Task { await model.delete(items, kept: kept) }
+                        })
                     }
                 }
             }

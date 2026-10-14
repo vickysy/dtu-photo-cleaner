@@ -106,10 +106,11 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
         guard authorized else { return }
         loading = true
         let settings = self.settings
+        let taste = TasteStore.taste
         let t0 = Date()
         let lib = await Task.detached(priority: .userInitiated) { () -> Library in
             let (images, videos) = PhotoSource.load()
-            return Library.build(images: images, videos: videos, settings: settings, taste: .normal)
+            return Library.build(images: images, videos: videos, settings: settings, taste: taste)
         }.value
         Usage.add("读相册.次数")
         Usage.add("读相册.毫秒", Int(Date().timeIntervalSince(t0) * 1000))
@@ -136,6 +137,8 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
         let todo: [MediaItem]
         let vtodo: [MediaItem]
         let ttodo: [MediaItem]
+        /// 最近 7 天还没认字的截图：照片、视频还要分析很久时先认这几张，刚截的好评马上能进“聊天记录”
+        let freshShots: [MediaItem]
         let photoTotal: Int
         let videoTotal: Int
         let textTotal: Int
@@ -169,7 +172,10 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
         let ttodo = textAll.filter { Analyzer.textNeedsWork($0, texts) }
         if todo.isEmpty && vtodo.isEmpty && ttodo.isEmpty { return nil }
         // 进度按“这一步一共多少、已经做完多少”显示（包括以前做完的），切走再回来不会像是从 0 重新开始
-        return AnalysisPlan(images: images, todo: todo, vtodo: vtodo, ttodo: ttodo,
+        let weekAgo = Int64((Date().timeIntervalSince1970 - 7 * 86_400) * 1000)
+        let freshShots = todo.isEmpty && vtodo.isEmpty ? [] :
+            Array(ttodo.filter { $0.isScreenshot && $0.timeMs >= weekAgo }.sorted { $0.timeMs > $1.timeMs }.prefix(40))
+        return AnalysisPlan(images: images, todo: todo, vtodo: vtodo, ttodo: ttodo, freshShots: freshShots,
                             photoTotal: images.filter { Analyzer.eligible($0) }.count,
                             videoTotal: lib.videos.filter { Analyzer.videoEligible($0) }.count,
                             textTotal: textAll.count)
@@ -209,7 +215,11 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
                     Usage.add("分析张数.\(name)", n)
                 }
             }
-            if !todo.isEmpty {
+            if !plan.freshShots.isEmpty {
+                await Analyzer.runTexts(plan.freshShots, onProgress: report("先认刚截的图", before: 0, all: plan.freshShots.count))
+                if !Task.isCancelled { await MainActor.run { self.refresh() } }
+            }
+            if !todo.isEmpty && !Task.isCancelled {
                 await timed("照片", todo.count) { await Analyzer.run(todo, onProgress: report(photoLabel, before: photoTotal - todo.count, all: photoTotal)) }
             }
             if !vtodo.isEmpty && !Task.isCancelled {

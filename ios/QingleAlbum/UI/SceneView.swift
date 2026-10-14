@@ -11,7 +11,7 @@ struct SceneListView: View {
     @State private var selected = Set<String>()
     @State private var initialized: Set<String> = []
     @State private var viewer: ViewerTarget?
-    @State private var confirmAll = false
+    @State private var deleting: DeleteRequest?
     @State private var drag = DragSelector()
 
     private func scene(_ sc: PhotoScene) -> PhotoScene {
@@ -27,6 +27,7 @@ struct SceneListView: View {
             VStack(spacing: 18) {
                 Footnote(text: "同一个地方连续拍了很多张时，帮你挑几张精华：构图好看、拍得清楚、没人闭眼，而且尽量是不同的画面。其余已经勾选，按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
                     .padding(.top, 8)
+                PreviewHint()
                 if scenes.isEmpty { Text("场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
                 ForEach(scenes) { sc in
                     SceneCard(scene: sc, selected: $selected, drag: drag,
@@ -37,7 +38,8 @@ struct SceneListView: View {
                                   let keep = rebuilt.keepIds
                                   rebuilt.members.filter { !keep.contains($0.id) }.forEach { selected.insert($0.id) }
                               },
-                              open: { items, i in viewer = ViewerTarget(items: items, start: i) })
+                              open: { items, i in viewer = ViewerTarget(items: items, start: i) },
+                              confirm: { deleting = $0 })
                 }
             }
             .padding(.bottom, 20)
@@ -50,21 +52,22 @@ struct SceneListView: View {
         .safeAreaInset(edge: .bottom) {
             if !scenes.isEmpty {
                 BottomBar(title: "还有 \(scenes.count) 个场景", subtitle: chosenIds.isEmpty ? "都设成了全部保留" : "全部按勾选处理：删 \(chosenIds.count) 张 · \(Fmt.bytes(chosenBytes))") {
-                    CapsuleButton(title: "全部删除…", color: .danger, filled: false, enabled: !chosenIds.isEmpty) { confirmAll = true }
+                    CapsuleButton(title: "全部删除…", color: .danger, filled: false, enabled: !chosenIds.isEmpty) {
+                        deleting = DeleteRequest(items: chosenIds.compactMap { model.library?.byId[$0] },
+                                                 note: "包括 \(scenes.count) 个场景里你还没看过的。每个场景按现在的勾选处理。") { items in
+                            let ids = Set(items.map { $0.id })
+                            let kept = scenes.flatMap { $0.members.map { $0.id } }.filter { !ids.contains($0) }
+                            Task { await model.delete(items, kept: kept) }
+                        }
+                    }
                 }
             }
         }
         .onAppear { initSelection(scenes) }
         .onChange(of: scenes.map { $0.id }) { initSelection(scenes) }
-        .alert("删除 \(scenes.count) 个场景里的 \(chosenIds.count) 张？", isPresented: $confirmAll) {
-            Button("取消", role: .cancel) {}
-            Button("全部删除", role: .destructive) {
-                let kept = scenes.flatMap { $0.members.map { $0.id }.filter { !selected.contains($0) } }
-                Task { await model.delete(chosenIds.compactMap { model.library?.byId[$0] }, kept: kept) }
-            }
-        } message: {
-            Text("包括你还没看过的场景。每个场景按现在的勾选处理，精华留下，其余 \(Fmt.bytes(chosenBytes)) 移到「最近删除」，30 天内能恢复。只想删一个场景，点那个场景的“删除”。")
-        }
+        .deleteConfirm($deleting, isMarked: { selected.contains($0) }, onToggle: { id in
+            if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
+        })
         .fullScreenCover(item: $viewer) { v in
             Viewer(items: v.items, index: v.start, isMarked: { selected.contains($0) }, onToggle: { id in
                 if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
@@ -96,6 +99,7 @@ private struct SceneCard: View {
     let drag: DragSelector
     let setKeep: (Int) -> Void
     let open: ([MediaItem], Int) -> Void
+    let confirm: (DeleteRequest) -> Void
 
     var body: some View {
         let items = displayIds(scene).compactMap { model.library?.byId[$0] }
@@ -133,8 +137,11 @@ private struct SceneCard: View {
                     CapsuleButton(title: "完成") { model.markReviewed(scene.members.map { $0.id }) }
                 } else {
                     CapsuleButton(title: "删除 \(dropped.count) 张 · \(Fmt.bytes(bytes))", color: .danger) {
-                        let kept = scene.members.filter { !selected.contains($0.id) }.map { $0.id }
-                        Task { await model.delete(dropped.compactMap { model.library?.byId[$0.id] }, kept: kept) }
+                        confirm(DeleteRequest(items: dropped.compactMap { model.library?.byId[$0.id] }) { items in
+                            let ids = Set(items.map { $0.id })
+                            let kept = scene.members.map { $0.id }.filter { !ids.contains($0) }
+                            Task { await model.delete(items, kept: kept) }
+                        })
                     }
                 }
             }

@@ -16,7 +16,7 @@ struct GridReviewView: View {
     /// 已经按推荐勾过的（之后用户改过的勾选不再动）
     @State private var seen = Set<String>()
     @State private var viewer: ViewerTarget?
-    @State private var confirm = false
+    @State private var deleting: DeleteRequest?
     @State private var drag = DragSelector()
 
     private var title: String {
@@ -30,10 +30,10 @@ struct GridReviewView: View {
 
     private var note: String {
         switch kind {
-        case .bad: return "拍糊的、太暗的、误拍的纯色画面。背景虚化（人像模式）的照片只要主体清楚就不算糊。“可能模糊”的没有勾，长按看大图再决定。按住照片横着一划可以连续选。"
+        case .bad: return "拍糊的、太暗的、误拍的纯色画面。背景虚化（人像模式）的照片只要主体清楚就不算糊。“可能模糊”的没有勾，点放大镜看大图再决定。按住照片横着一划可以连续选。"
         case .screenshots: return "超过 \(model.settings.screenshotDays) 天的截图已经勾选；取件码、验证码、付款码这类用完就没用的，3 天前的就勾上；证件永远不勾。按住横着一划可以连续选。"
-        case .bigVideos: return "超过 \(model.settings.bigVideoMB) MB 的视频，从大到小排。都没勾，长按播放看一眼再决定；按住横着一划可以连续选。"
-        case .videos: return "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，长按播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里。"
+        case .bigVideos: return "超过 \(model.settings.bigVideoMB) MB 的视频，从大到小排。都没勾，点放大镜播放看一眼再决定；按住横着一划可以连续选。"
+        case .videos: return "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，点放大镜播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里。"
         }
     }
 
@@ -60,6 +60,7 @@ struct GridReviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 Footnote(text: note).padding(.top, 8)
+                PreviewHint()
                 if list.isEmpty {
                     Text("没有需要处理的").foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.top, 80)
                 }
@@ -88,22 +89,30 @@ struct GridReviewView: View {
         }
         .safeAreaInset(edge: .bottom) {
             BottomBar(title: "已选 \(chosen.count) 项", subtitle: "\(Fmt.bytes(chosen.reduce(0) { $0 + $1.size })) · 共 \(items.count) 项") {
-                CapsuleButton(title: "删除", color: .danger, enabled: !chosen.isEmpty) { confirm = true }
+                CapsuleButton(title: "删除", color: .danger, enabled: !chosen.isEmpty) {
+                deleting = DeleteRequest(items: chosen) { items in
+                    Task { if await model.delete(items) { selected.subtract(items.map { $0.id }) } }
+                }
+            }
             }
         }
         .onAppear { preselect(list) }
         .onChange(of: items.map { $0.id }) { preselect(entries) }
-        .alert("删除 \(chosen.count) 项？", isPresented: $confirm) {
-            Button("取消", role: .cancel) {}
-            Button("删除", role: .destructive) {
-                Task { if await model.delete(chosen) { selected.subtract(chosen.map { $0.id }) } }
-            }
-        } message: {
-            Text("会移到「照片」的「最近删除」，30 天内能恢复。")
-        }
+        .deleteConfirm($deleting, isMarked: { selected.contains($0) }, onToggle: toggle)
         .fullScreenCover(item: $viewer) { v in
-            Viewer(items: v.items, index: v.start, isMarked: { selected.contains($0) }, onToggle: toggle)
+            Viewer(items: v.items, index: v.start, isMarked: { selected.contains($0) }, onToggle: toggle, actions: viewerActions)
         }
+    }
+
+    /// 截图看大图时能设为好评（和安卓 v2.8.5 一样：没认成聊天记录的好评截图，比如朋友圈、小红书评论，也能收进“好评”）
+    private var viewerActions: [ViewerAction] {
+        guard kind == .screenshots else { return [] }
+        return [ViewerAction(icon: "star.fill", label: { model.praise.contains($0) ? "取消好评" : "设为好评" },
+                             tint: { model.praise.contains($0) ? .brandYellow : .white }) { id in
+            let on = !model.praise.contains(id)
+            if on { selected.remove(id) }
+            model.setPraise([id], on: on)
+        }]
     }
 
     /// 新出现的照片按推荐勾上（相册还没读完时进来，读完后补勾）

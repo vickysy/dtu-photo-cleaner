@@ -6,7 +6,7 @@ struct AestheticView: View {
     @State private var bestFirst = true
     @State private var selected = Set<String>()
     @State private var viewer: ViewerTarget?
-    @State private var confirm = false
+    @State private var deleting: DeleteRequest?
     @State private var drag = DragSelector()
 
     var body: some View {
@@ -23,7 +23,8 @@ struct AestheticView: View {
                     Text("最差的在前").tag(false)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 8)
-                Footnote(text: "\(Fmt.count(items.count)) 张相机照片按构图、色彩、清晰度打了分（iOS 自带的美感评估，换算成 1–10）。\(low) 张 4.3 分及以下。没有预选，长按看大图，自己挑着删；按住横着一划可以连续选。")
+                Footnote(text: "\(Fmt.count(items.count)) 张相机照片按构图、色彩、清晰度打了分（iOS 自带的美感评估，换算成 1–10）。\(low) 张 4.3 分及以下。没有预选，点放大镜看大图，自己挑着删；按住横着一划可以连续选。")
+                PreviewHint()
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                     ForEach(Array(scored.enumerated()), id: \.element.0.id) { i, e in
                         let r = aesRounded(e.1)
@@ -48,18 +49,15 @@ struct AestheticView: View {
         .safeAreaInset(edge: .bottom) {
             if !chosen.isEmpty {
                 BottomBar(title: "已选 \(chosen.count) 张", subtitle: Fmt.bytes(chosen.reduce(0) { $0 + $1.size })) {
-                    CapsuleButton(title: "删除", color: .danger) { confirm = true }
+                    CapsuleButton(title: "删除", color: .danger) {
+                    deleting = DeleteRequest(items: chosen) { items in
+                        Task { if await model.delete(items) { selected.subtract(items.map { $0.id }) } }
+                    }
+                }
                 }
             }
         }
-        .alert("删除 \(chosen.count) 张？", isPresented: $confirm) {
-            Button("取消", role: .cancel) {}
-            Button("删除", role: .destructive) {
-                Task { if await model.delete(chosen) { selected.subtract(chosen.map { $0.id }) } }
-            }
-        } message: {
-            Text("会移到「照片」的「最近删除」，30 天内能恢复。")
-        }
+        .deleteConfirm($deleting, isMarked: { selected.contains($0) }, onToggle: toggle)
         .fullScreenCover(item: $viewer) { v in
             Viewer(items: v.items, index: v.start, isMarked: { selected.contains($0) }, onToggle: toggle)
         }

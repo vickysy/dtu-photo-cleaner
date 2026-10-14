@@ -160,6 +160,7 @@ struct SettingsView: View {
                 }
                 Button("重新分析全部照片", role: .destructive) { askReanalyze = true }
             }
+            TasteSection()
             Section {
                 NavigationLink(value: Route.report) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -184,5 +185,37 @@ struct SettingsView: View {
         } message: {
             Text("几千张要几分钟。保留过的记录不会丢。")
         }
+    }
+}
+
+/// 设置里的“学到的口味”（和安卓版一样）
+private struct TasteSection: View {
+    @EnvironmentObject var model: AppModel
+    @State private var votes = TasteStore.votes
+
+    var body: some View {
+        let total = votes.aes + votes.tech
+        let w = Taste.from(aesVotes: votes.aes, techVotes: votes.tech).aestheticWeight
+        let label = total == 0 ? "还没学到" : w > 0.4 ? "你更看重构图好看" : w < 0.3 ? "你更看重拍得清楚" : "清楚和好看差不多一样重要"
+        let footer = "你在相似照片里改了推荐（留下的不是推荐的那张）再删除时，会记下来，以后挑照片更像你。" + (total > 0 ? "已经学了 \(total) 次。" : "")
+        Section {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label)
+                Text("构图美感占 \(Int(w * 100))%，其余看清晰、曝光、有没有人闭眼").font(.footnote).foregroundStyle(.secondary)
+            }
+            if total > 0 {
+                Button("恢复默认口味") {
+                    TasteStore.reset()
+                    votes = TasteStore.votes
+                    model.refresh()
+                    model.show("已恢复默认口味")
+                }
+            }
+        } header: {
+            Text("学到的口味")
+        } footer: {
+            Text(footer)
+        }
+        .onAppear { votes = TasteStore.votes }
     }
 }

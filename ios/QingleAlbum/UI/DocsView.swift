@@ -113,7 +113,7 @@ struct AlbumView: View {
     @State private var seen = Set<String>()
     @State private var onlyPraise = false
     @State private var viewer: ViewerTarget?
-    @State private var confirm = false
+    @State private var deleting: DeleteRequest?
     @State private var share: ShareItems?
     @State private var drag = DragSelector()
 
@@ -132,7 +132,7 @@ struct AlbumView: View {
         let allSelected = !visible.isEmpty && visible.allSatisfy { selected.contains($0.id) }
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Footnote(text: note + "\n" + (selecting ? "点照片勾选，按住横着一划可以连续选，长按看大图。" :
+                Footnote(text: note + "\n" + (selecting ? "点照片勾选，按住横着一划可以连续选，点放大镜看大图。" :
                     fixedIds != nil ? "点开看大图，左右滑一张张看；点右上角“选择”挑出要的几张，再拼成长图或整理成文字。"
                     : "点开看大图；点右上角“选择”可以多选，拼成长图发给朋友或得到。"))
                     .padding(.top, 8)
@@ -177,12 +177,7 @@ struct AlbumView: View {
             if selecting { toolbar(chosen) }
         }
         .onAppear { setup(items) }
-        .alert("删除 \(chosen.count) 张？", isPresented: $confirm) {
-            Button("取消", role: .cancel) {}
-            Button("删除", role: .destructive) { Task { await delete(chosen) } }
-        } message: {
-            Text("会移到「照片」的「最近删除」，30 天内能恢复。")
-        }
+        .deleteConfirm($deleting, isMarked: { selected.contains($0) }, onToggle: toggle)
         .fullScreenCover(item: $viewer) { v in
             if selecting {
                 Viewer(items: v.items, index: v.start, isMarked: { selected.contains($0) }, onToggle: toggle)
@@ -205,6 +200,9 @@ struct AlbumView: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 if selecting { SelectCircle(selected: selected.contains(m.id), size: 22).padding(5) }
+            }
+            .overlay(alignment: .topTrailing) {
+                if selecting { ZoomButton { Usage.add("看大图"); viewer = ViewerTarget(items: visible, start: i) } }
             }
             .contentShape(Rectangle())
             .onTapGesture {
@@ -270,7 +268,9 @@ struct AlbumView: View {
                     if !cleanup { selecting = false; selected.removeAll() }
                 }
             }
-            tool("trash", "删除", enabled: any, tint: .danger) { confirm = true }
+            tool("trash", "删除", enabled: any, tint: .danger) {
+                deleting = DeleteRequest(items: chosen) { items in Task { await delete(items) } }
+            }
         }
         .padding(.horizontal, 16).padding(.vertical, 8)
         .background(.bar)

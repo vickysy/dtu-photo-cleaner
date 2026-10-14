@@ -127,6 +127,13 @@ enum Report {
             let kinds = ShotKind.allCases.map { k in (k, lib.docKinds.values.filter { $0 == k }.count) }.filter { $0.1 > 0 }
             if !kinds.isEmpty { out.append("认出的图片：" + kinds.map { "\($0.0.rawValue) \($0.1)" }.joined(separator: "，")) }
             out.append("截图笔记 \(lib.sessions.count) 串，设为好评 \(model.praise.count) 张")
+            // 美感分是 iOS 自带的评估换算成 1–10 的：看分布，才知道“4.3 分及以下”“5.5 分及以上”这两条线在 iPhone 上准不准
+            let aes = lib.aesthetic.values.sorted()
+            if aes.count >= 20 {
+                func at(_ q: Double) -> String { String(format: "%.1f", aes[min(aes.count - 1, Int(Double(aes.count) * q))]) }
+                let low = aes.filter { aesRounded($0) <= aesLow }.count, high = aes.filter { aesRounded($0) >= aesHigh }.count
+                out.append("美感分分布（\(aes.count) 张相机照片）：最低 5% \(at(0.05))，四分之一 \(at(0.25))，中间 \(at(0.5))，四分之三 \(at(0.75))，最高 5% \(at(0.95))；4.3 分及以下 \(low) 张（\(low * 100 / aes.count)%），5.5 分及以上 \(high) 张（\(high * 100 / aes.count)%）")
+            }
             let r = lib.reclaimable()
             out.append("按推荐全删，一共能腾出 \(Fmt.count(r.count)) 项 · \(Fmt.bytes(r.bytes))")
         }
@@ -163,6 +170,8 @@ enum Report {
         out.append("压缩视频：成功 \(n("压缩.成功")) 个，失败 \(n("压缩.失败")) 个；满意删原视频 \(n("压缩.满意删原视频")) 个，不满意删压缩版 \(n("压缩.不满意删压缩版")) 个")
         let monthly = UserDefaults.standard.object(forKey: MonthlyReminder.key) as? Bool ?? true
         out.append("每月提醒：\(monthly ? "开着" : "关了")")
+        let tv = TasteStore.votes
+        out.append("学到的口味：好看 \(tv.aes) 票，清楚 \(tv.tech) 票，美感占 \(Int(TasteStore.taste.aestheticWeight * 100))%")
         if n("让保留过的重新参与建议") > 0 { out.append("点过“让保留过的照片重新参与建议” \(n("让保留过的重新参与建议")) 次") }
 
         out.append("")

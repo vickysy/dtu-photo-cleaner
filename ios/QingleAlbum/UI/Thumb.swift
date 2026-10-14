@@ -43,7 +43,7 @@ struct AssetThumb: View {
     }
 }
 
-/// 照片格子：点一下勾选/取消，长按看大图。勾选 = 要删
+/// 照片格子：点一下勾选/取消；右上角放大镜（或长按）看大图。勾选 = 要删
 struct PhotoCell: View {
     let item: MediaItem
     let selected: Bool
@@ -68,6 +68,8 @@ struct PhotoCell: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) { SelectCircle(selected: selected, size: 22).padding(5) }
+            // 放大镜：用户反馈过“找不到大图”（只能长按），和安卓 v2.8.5 一样放一个看得见的入口
+            .overlay(alignment: .topTrailing) { ZoomButton(action: { Usage.add("看大图"); onOpen() }) }
             .contentShape(Rectangle())
             .onTapGesture {
                 Usage.add((selected ? "取消勾选." : "勾选.") + Usage.page)
@@ -331,5 +333,41 @@ struct Mosaic: View {
             .overlay(alignment: .bottomLeading) {
                 if m.isVideo { Image(systemName: "play.fill").font(.system(size: 12)).foregroundStyle(.white).padding(4) }
             }
+    }
+}
+
+/// 小图右上角的放大镜：点它看大图
+struct ZoomButton: View {
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus.magnifyingglass")
+                .font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
+                .frame(width: 22, height: 22)
+                .background(Color.black.opacity(0.35), in: Circle())
+                .padding(4)
+                .frame(width: 34, height: 34, alignment: .topTrailing)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("看大图")
+    }
+}
+
+/// 第一次进清理页面提示一次怎么看大图；点“知道了”以后不再出现
+struct PreviewHint: View {
+    @AppStorage("previewHintShown") private var shown = false
+    var body: some View {
+        if !shown {
+            HStack(spacing: 10) {
+                Image(systemName: "plus.magnifyingglass").font(.system(size: 20)).foregroundStyle(Color.brand)
+                Text("点照片右上角的放大镜（或按住照片）看大图。大图里也能改成保留。")
+                    .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
+                Button("知道了") { shown = true }.font(.subheadline.weight(.semibold)).foregroundStyle(Color.accentText)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(Color.brand.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 16)
+        }
     }
 }

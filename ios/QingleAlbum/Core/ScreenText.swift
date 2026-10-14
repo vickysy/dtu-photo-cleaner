@@ -79,6 +79,8 @@ enum ScreenText {
     private static let orderWeak = ["实付", "退款", "物流", "已签收", "已发货", "待收货", "确认收货", "商品总价"]
     /// 只在聊天记录里出现的字
     private static let chatWords = ["撤回了一条消息", "[语音]", "[图片]", "[表情]", "[动画表情]", "拍了拍", "以下为新消息"]
+    /// 语音消息的时长：微信、QQ 的语音气泡只有一个“18″”（前面的喇叭图标常被认成零碎符号）。整行只有秒数加引号，文章、界面里几乎不会出现
+    private static let voiceLine = try! NSRegularExpression(pattern: "^[^\\p{L}\\d]{0,4}\\d{1,2}\\s*[\"“”″＂'’]{1,2}$")
     /// 聊天记录中间的时间分隔：“昨天 21:30”“星期三 10:12”“下午 3:05”
     private static let chatTime = try! NSRegularExpression(pattern: "^(昨天|前天|星期[一二三四五六日天]|周[一二三四五六日天]|上午|下午|晚上|凌晨|中午|早上)\\s*\\d{1,2}[:：]\\d{2}$")
     /// 居中的时间戳（去掉空格后整行匹配）：“10:12”“昨天21:30”“3月1日下午3:05”“2025/3/1 10:12”
@@ -145,6 +147,8 @@ enum ScreenText {
         if orderStrong.contains(where: { t.contains($0) }) || count(orderWeak, t) >= 2 { return .order }
         if chatWords.contains(where: { t.contains($0) }) { return .chat }
         if let layout, layout.wechatChat { return .chat }
+        // 对方发来一大段字、再加几条语音：没有绿气泡、没有居中的时间，以前会被当成文章（和安卓 v2.8.5 一样）
+        if text.components(separatedBy: "\n").filter({ matches(voiceLine, $0.trimmingCharacters(in: .whitespaces)) }).count >= 2 { return .chat }
         // 聊天中间的时间，再加上对齐的气泡、左右不并排（文件列表、日程表也有时间，但会并排）
         if let layout, layout.times > 0 || lines.contains(where: { matches(chatTime, $0) }), layout.bubbles { return .chat }
         if !codes.isEmpty && chars < 150 { return .qr }
