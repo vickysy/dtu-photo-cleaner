@@ -17,7 +17,7 @@ struct SceneListView: View {
 
     private func scene(_ sc: PhotoScene) -> PhotoScene {
         guard let k = keepOverride[sc.id], k != sc.keepCount else { return sc }
-        return SceneDetector.build(sc.members, keep: k)
+        return sc.rebuilt(keep: k)
     }
 
     var body: some View {
@@ -34,10 +34,9 @@ struct SceneListView: View {
                     SceneCard(scene: sc, selected: $selected, drag: drag,
                               setKeep: { k in
                                   keepOverride[sc.id] = k
-                                  let rebuilt = SceneDetector.build(sc.members, keep: k)
+                                  let rebuilt = sc.rebuilt(keep: k)
                                   sc.members.forEach { selected.remove($0.id) }
-                                  let keep = rebuilt.keepIds
-                                  rebuilt.members.filter { !keep.contains($0.id) }.forEach { selected.insert($0.id) }
+                                  rebuilt.suggested.forEach { selected.insert($0) }
                               },
                               open: { items, i in viewer = ViewerTarget(items: items, start: i) },
                               confirm: { deleting = $0 })
@@ -65,7 +64,7 @@ struct SceneListView: View {
             }
         }
         .onAppear { initSelection(scenes) }
-        .onChange(of: scenes.map { $0.id }) { initSelection(scenes) }
+        .onChange(of: scenes.map(Self.key)) { initSelection(scenes) }
         .deleteConfirm($deleting, isMarked: { selected.contains($0) }, onToggle: { id in
             if selected.contains(id) { selected.remove(id) } else { selected.insert(id) }
         })
@@ -76,12 +75,16 @@ struct SceneListView: View {
         }
     }
 
-    /// 新出现的场景按推荐勾上（已经看过、改过勾选的不动）
+    /// 场景和它的建议：分析中途相册刷新，场景会并进新照片、建议会变
+    private static func key(_ sc: PhotoScene) -> String { sc.id + "|" + sc.suggested.joined(separator: ",") }
+
+    /// 新出现的场景、建议变了的场景，按推荐重新勾（先清掉这个场景原来的勾，免得精华、收藏的还勾着）；
+    /// 用户改过勾选、建议没变的场景不动
     private func initSelection(_ scenes: [PhotoScene]) {
-        for sc in scenes where !initialized.contains(sc.id) {
-            let keep = sc.keepIds
-            sc.members.filter { !keep.contains($0.id) }.forEach { selected.insert($0.id) }
-            initialized.insert(sc.id)
+        for sc in scenes where !initialized.contains(Self.key(sc)) {
+            sc.members.forEach { selected.remove($0.id) }
+            sc.suggested.forEach { selected.insert($0) }
+            initialized.insert(Self.key(sc))
         }
     }
 }
@@ -118,7 +121,7 @@ private struct SceneCard: View {
                 }
                 Spacer()
                 Text("精华 \(scene.keepCount) 张").font(.subheadline)
-                Stepper("", value: Binding(get: { scene.keepCount }, set: { setKeep($0) }), in: 1...max(1, scene.members.count - scene.favorites.count))
+                Stepper("", value: Binding(get: { scene.keepCount }, set: { setKeep($0) }), in: 1...max(1, scene.maxHighlights))
                     .labelsHidden()
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 4), spacing: 3) {
@@ -150,12 +153,17 @@ private struct SceneCard: View {
                 if dropped.isEmpty {
                     CapsuleButton(title: "完成") { model.markReviewed(scene.members.map { $0.id }) }
                 } else {
-                    CapsuleButton(title: "删除 \(dropped.count) 张 · \(Fmt.bytes(bytes))", color: .danger) {
+                    let run = {
                         confirm(DeleteRequest(items: dropped.compactMap { model.library?.byId[$0.id] }) { items in
                             let ids = Set(items.map { $0.id })
                             let kept = scene.members.map { $0.id }.filter { !ids.contains($0) }
                             Task { await model.delete(items, kept: kept) }
                         })
+                    }
+                    // 左边有“全部保留”“只留精华”两个时，窄屏放不下大小就只写张数（不然大小被截成“15…”）
+                    ViewThatFits(in: .horizontal) {
+                        CapsuleButton(title: "删除 \(dropped.count) 张 · \(Fmt.bytes(bytes))", color: .danger, action: run)
+                        CapsuleButton(title: "删除 \(dropped.count) 张", color: .danger, action: run)
                     }
                 }
             }

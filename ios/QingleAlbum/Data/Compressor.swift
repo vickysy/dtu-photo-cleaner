@@ -27,7 +27,7 @@ enum Compressor {
         }
     }
 
-    /// 压过但压不成的（时长对不上、没变小）：不再出现在“可压缩”里，免得一遍遍重试
+    /// 压过但压不成的（时长对不上、没变小）、用户不要压缩版的：不再出现在“可压缩”里，免得一遍遍重试
     private static let failedKey = "compress.failed"
     static var failed: Set<String> { Set(UserDefaults.standard.stringArray(forKey: failedKey) ?? []) }
     static func markFailed(_ id: String) {
@@ -63,7 +63,7 @@ enum Compressor {
         let out = AVURLAsset(url: url)
         let outDur = (try? await out.load(.duration)).map { CMTimeGetSeconds($0) } ?? 0
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-        guard size > 0 else { throw Failure.verifyFailed }
+        guard size > 0, outDur > 0 else { throw Failure.verifyFailed }
         guard abs(outDur * 1000 - Double(m.durationMs)) < 1500 else { throw Failure.durationMismatch }
         guard size < m.size else { throw Failure.notSmaller }
 

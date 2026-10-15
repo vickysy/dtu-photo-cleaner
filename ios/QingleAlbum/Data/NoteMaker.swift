@@ -32,15 +32,27 @@ enum NoteMaker {
         }
     }
 
+    /// 清掉上次分享导出的原图（每张一个文件夹）
+    static func clearExports() {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("share", isDirectory: true)
+        let subs = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isDirectoryKey])) ?? []
+        for u in subs where (try? u.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+            try? FileManager.default.removeItem(at: u)
+        }
+    }
+
     /// 把原图导出成临时文件（分享用，保留原来的格式和画质）
     static func exportOriginal(_ asset: PHAsset) async -> URL? {
         // 编辑过的照片分享编辑后的样子
         let all = PHAssetResource.assetResources(for: asset)
         guard let res = all.first(where: { $0.type == .fullSizePhoto }) ?? all.first(where: { $0.type == .photo }) ?? all.first else { return nil }
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("share", isDirectory: true)
+        // 每张一个文件夹：编辑过的照片文件名都叫 FullSizeRender.jpg，放一起会互相覆盖，分享出去全是最后一张。
+        // 文件名用原照片的名字（IMG_1234），扩展名跟着导出的那份
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("share/\(UUID().uuidString)", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appendingPathComponent(res.originalFilename)
-        try? FileManager.default.removeItem(at: url)
+        let base = (all.first(where: { $0.type == .photo }) ?? res).originalFilename
+        let name = (base as NSString).deletingPathExtension + "." + (res.originalFilename as NSString).pathExtension
+        let url = dir.appendingPathComponent(name)
         let o = PHAssetResourceRequestOptions()
         o.isNetworkAccessAllowed = true
         do {

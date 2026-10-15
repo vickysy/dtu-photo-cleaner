@@ -192,6 +192,12 @@ struct Viewer: View {
             }
         }
         .background(Color.black.opacity(1 - min(0.6, Double(dragY) / 400)).ignoresSafeArea())
+        // 关掉大图才把声音还给别的 App（音乐接着放）；每翻一页都还的话，两段视频之间音乐会冒出来
+        .onDisappear {
+            DispatchQueue.global(qos: .utility).async {
+                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            }
+        }
     }
 }
 
@@ -300,12 +306,7 @@ private struct BigImage: View {
                 }
             }
         }
-        .onDisappear {
-            guard let player else { return }
-            player.pause()
-            // 看完把声音还给别的 App（音乐接着放）
-            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        }
+        .onDisappear { player?.pause() }
     }
 }
 

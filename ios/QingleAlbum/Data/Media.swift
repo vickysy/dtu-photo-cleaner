@@ -23,12 +23,13 @@ struct MediaItem: Identifiable, Hashable {
     let lng: Double?
 
     var maxSide: Int { max(width, height) }
-    /// 视频清晰度：4K、1080p、720p……按短边算（竖着拍的也对），裁过一点的往常见档位上靠
+    /// 视频清晰度：4K、2.7K 看长边，其余按短边（竖着拍的也对），裁过一点的往常见档位上靠
     var resolution: String? {
         guard isVideo else { return nil }
-        let s = min(width, height)
-        if s >= 2000 { return "4K" }
-        return [1440, 1080, 720, 540, 480, 360].first { Double(s) >= Double($0) * 0.9 }.map { "\($0)p" }
+        let long = max(width, height), short = min(width, height)
+        if long >= 3800 { return "4K" }
+        if long >= 2600 { return "2.7K" }
+        return [1440, 1080, 720, 540, 480, 360].first { Double(short) >= Double($0) * 0.9 }.map { "\($0)p" }
     }
 
     /**

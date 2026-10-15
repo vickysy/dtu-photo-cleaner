@@ -141,19 +141,21 @@ struct Library {
         var params = GroupParams()
         params.maxGapMs = Int64(settings.gapSec) * 1000
         params.keepCount = settings.keepPerGroup
-        // 场景：只看相机拍的；大部分照片都标记过保留的场景不再出现
-        let scenes = SceneDetector.segment(cameraInfos)
-            .filter { ms in Double(ms.filter { reviewed.contains($0.id) }.count) < Double(ms.count) * 0.8 }
-            .map { SceneDetector.build($0, taste: taste) }
-            // 拍的都不一样又清楚（博物馆、逛展）：没有建议删的，不用列出来
-            .filter { !$0.suggested.isEmpty }
-            .sorted { $0.startTime > $1.startTime }
         let groups = Grouper.group(infos, params)
             .map { Ranker.rank($0, keepCount: settings.keepPerGroup, taste: taste) }
             .filter { g in g.members.contains { !reviewed.contains($0.photo.id) } && !g.suggestedDelete.isEmpty }
             .sorted { $0.startTime > $1.startTime }
         var proposed = Set<String>()
-        groups.forEach { g in g.suggestedDelete.forEach { proposed.insert($0.photo.id) } }
+        var similarDrop: [String: Bool] = [:]
+        groups.forEach { g in g.suggestedDelete.forEach { proposed.insert($0.photo.id); similarDrop[$0.photo.id] = g.nearIdentical } }
+        // 场景：只看相机拍的；大部分照片都标记过保留的场景不再出现。
+        // 建议删的跟“相似照片”一致（两页留的是同一张），再加上明显拍糊的
+        let scenes = SceneDetector.segment(cameraInfos)
+            .filter { ms in Double(ms.filter { reviewed.contains($0.id) }.count) < Double(ms.count) * 0.8 }
+            .map { SceneDetector.build($0, taste: taste, similarDrop: similarDrop, reviewed: reviewed) }
+            // 拍的都不一样又清楚（博物馆、逛展）：没有建议删的，不用列出来
+            .filter { !$0.suggested.isEmpty }
+            .sorted { $0.startTime > $1.startTime }
 
         let bad: [BadItem] = images.compactMap { m in
             guard Analyzer.eligible(m), m.isCameraShot, !m.favorite, !proposed.contains(m.id), !reviewed.contains(m.id),

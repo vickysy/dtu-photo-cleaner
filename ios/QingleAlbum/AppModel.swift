@@ -126,8 +126,32 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
         if CommandLine.arguments.contains("-autoCompress") && compressing == nil && lib.compressedPending.isEmpty, let c = lib.compressible.first {
             compress([c.item])
         }
+        // 模拟器测试用：-dumpLibrary 把各页的建议按文件名打出来，核对规则
+        if CommandLine.arguments.contains("-dumpLibrary") && lib.analyzed { Self.dump(lib) }
         #endif
     }
+
+    #if DEBUG
+    private static func dump(_ lib: Library) {
+        func name(_ id: String) -> String {
+            guard let a = lib.byId[id]?.asset else { return id }
+            return PHAssetResource.assetResources(for: a).first?.originalFilename ?? id
+        }
+        func names(_ ids: [String]) -> String { ids.map(name).sorted().joined(separator: " ") }
+        print("DUMP 场景 \(lib.scenes.count) 个")
+        for sc in lib.scenes {
+            print("DUMP 场景 \(sc.members.count) 张 精华[\(names(sc.highlights))] 建议删[\(names(sc.suggested))] 收藏[\(names(sc.favorites))]")
+        }
+        for g in lib.groups {
+            print("DUMP 相似 \(g.nearIdentical ? "几乎一样" : "角度不同") 留[\(names(g.members.filter { $0.keep }.map { $0.photo.id }))] 删[\(names(g.suggestedDelete.map { $0.photo.id }))]")
+        }
+        print("DUMP 废片[\(names(lib.bad.map { $0.item.id }))]")
+        print("DUMP 可删的视频[\(lib.videoSuggest.map { name($0.item.id) + ":" + $0.reasons.map { "\($0)" }.joined(separator: "+") }.joined(separator: " "))]")
+        print("DUMP 可压缩[\(lib.compressible.map { name($0.id) + ":" + ($0.item.resolution ?? "?") }.joined(separator: " "))] 等确认[\(lib.compressedPending.map { name($0.source.id) + "→" + name($0.output.id) }.joined(separator: " "))]")
+        print("DUMP 视频场景 \(lib.videoScenes.count) 个；大视频[\(names(lib.bigVideos.map { $0.id }))]")
+        print("DUMP END")
+    }
+    #endif
 
     // ---------- 分析 ----------
 
@@ -307,6 +331,8 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
         if await delete([pair.output]) {
             Usage.add("压缩.不满意删压缩版")
             Store.shared.removeCompressed(src: pair.source.id)
+            // 不满意压缩效果：这个视频以后不再推荐压缩（以前会马上回到列表里，还默认勾上）
+            Compressor.markFailed(pair.source.id)
             await reload()
         }
     }
@@ -449,6 +475,7 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
     /// 分享原图：导出成文件（保留原图画质）
     func originals(_ items: [MediaItem]) async -> [URL] {
         var urls: [URL] = []
+        NoteMaker.clearExports()
         for m in items { if let u = await NoteMaker.exportOriginal(m.asset) { urls.append(u) } }
         Usage.add("分享原图", urls.count)
         if urls.count < items.count { Usage.event("分享原图：\(items.count - urls.count) 张没导出来") }

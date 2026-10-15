@@ -4,10 +4,11 @@ import Foundation
  场景精选：一个地方连续拍了几十张、构图各不相同，只想留几张精华。
  1. 按拍摄时间切场景（隔 20 分钟没拍，或者换了 1.5 公里以外的地方，就算新场景），够多张的才处理；
  2. 每张打分：美感为主，曝光、有没有人闭眼为辅，拍糊的垫底；
- 3. 挑精华兼顾“好”和“不重复”（MMR），挑出来的几张覆盖不同画面；
- 4. 建议删的只有两种：和场景里更好的一张很像的（同一个东西拍了好几张）、明显拍糊的。
-    拍的东西不一样、又清楚的都留着。
- 1–3 和安卓版 core/Scenes.kt 一样；4 是 iPhone 1.0.1 先改的：原来除了精华全建议删，
+ 3. 建议删的只有两种：“相似照片”里建议删的（同一个东西拍了好几张、没那张好的，和那一页留的是同一张）、
+    明显拍糊的；收藏的、用户点过保留的不删。拍的东西不一样、又清楚的都留着；
+ 4. 精华兼顾“好”和“不重复”（MMR），挑出来的几张覆盖不同画面；不从“几乎一样”里建议删的和拍糊的里挑
+    （“角度不同”的照样能当精华：同一个地方换着角度拍的，还是留几张）。
+ 1、2、4 的挑法和安卓版 core/Scenes.kt 一样；3 是 iPhone 1.0.1 先改的：原来除了精华全建议删，
  朋友反馈在博物馆拍的每件展品都不一样，也只留了 5 张。
  */
 struct PhotoScene: Identifiable {
@@ -21,6 +22,20 @@ struct PhotoScene: Identifiable {
     let favorites: [String]
     /// 建议删的（按时间）：拍重了没那张好的、明显拍糊的
     let suggested: [String]
+    /// 重新挑精华（改“精华几张”）时要用同样的条件
+    let taste: Taste
+    let similarDrop: [String: Bool]
+    let reviewed: Set<String>
+
+    /// “精华几张”最多能调到几：能当精华的照片有几张（收藏的不算）
+    var maxHighlights: Int {
+        members.filter { !$0.favorite && SceneDetector.canHighlight($0, similarDrop, reviewed) }.count
+    }
+
+    /// 改了精华张数，按同样的条件重算
+    func rebuilt(keep: Int) -> PhotoScene {
+        SceneDetector.build(members, keep: keep, taste: taste, similarDrop: similarDrop, reviewed: reviewed)
+    }
 
     /// 留下的：除了建议删的都留
     var keepIds: Set<String> { Set(members.map { $0.id }).subtracting(suggested) }
@@ -60,14 +75,36 @@ enum SceneDetector {
     /// 精华：十几张标 3 张，二三十张标 4 张，更多标 5 张
     static func defaultKeep(_ n: Int) -> Int { n < 20 ? 3 : n < 40 ? 4 : 5 }
 
-    static func build(_ members: [PhotoInfo], keep: Int? = nil, taste: Taste = .normal) -> PhotoScene {
+    /// [similarDrop]：“相似照片”里建议删的 → 是不是“几乎一样”的组；[reviewed]：用户看过、选了保留的
+    static func build(_ members: [PhotoInfo], keep: Int? = nil, taste: Taste = .normal,
+                      similarDrop: [String: Bool] = [:], reviewed: Set<String> = []) -> PhotoScene {
         let sorted = members.sorted { $0.timeMs < $1.timeMs }
+        let ids = Set(sorted.map { $0.id })
+        let drop = Set(sorted.filter { isDrop($0, similarDrop, reviewed) }.map { $0.id })
         // 默认留几张按不算收藏的张数定
         let k = keep ?? defaultKeep(sorted.filter { !$0.favorite }.count)
         let q = qualities(sorted, taste)
-        let highlights = pick(sorted, k, q)
-        return PhotoScene(id: sorted[0].id, members: sorted, highlights: highlights.map { $0.id }, keepCount: k,
-                          favorites: sorted.filter { $0.favorite }.map { $0.id }, suggested: suggest(sorted, highlights, q))
+        // 能当精华的都不够（比如全糊）才从建议删的里挑
+        let pool = sorted.filter { canHighlight($0, similarDrop, reviewed) }
+        let picked = pick(pool.contains { !$0.favorite } ? pool : sorted, k, q).map { $0.id }
+        let highlights = Set(picked)
+        return PhotoScene(id: sorted[0].id, members: sorted, highlights: picked, keepCount: k,
+                          favorites: sorted.filter { $0.favorite }.map { $0.id },
+                          suggested: sorted.map { $0.id }.filter { drop.contains($0) && !highlights.contains($0) },
+                          taste: taste, similarDrop: similarDrop.filter { ids.contains($0.key) }, reviewed: reviewed.intersection(ids))
+    }
+
+    private static func blurry(_ p: PhotoInfo) -> Bool { BadShotRules.blurLevel(p.features, 1) == 2 }
+
+    /// 建议删：“相似照片”里建议删的、明显拍糊的；收藏的、用户点过保留的不删
+    static func isDrop(_ p: PhotoInfo, _ similarDrop: [String: Bool], _ reviewed: Set<String>) -> Bool {
+        !p.favorite && !reviewed.contains(p.id) && (similarDrop[p.id] != nil || blurry(p))
+    }
+
+    /// 能当精华：不建议删的，或者只是“角度不同”里没被推荐的（同一个地方换着角度拍的，还是留几张）。
+    /// “几乎一样”里建议删的、拍糊的不当精华，和“相似照片”留同一张
+    static func canHighlight(_ p: PhotoInfo, _ similarDrop: [String: Bool], _ reviewed: Set<String>) -> Bool {
+        !isDrop(p, similarDrop, reviewed) || (similarDrop[p.id] == false && !blurry(p))
     }
 
     /// 每张的质量分（场景内比较用）
@@ -76,27 +113,6 @@ enum SceneDetector {
         let mean = known.isEmpty ? 0 : known.reduce(0, +) / Float(known.count)
         let std: Float = known.count < 2 ? 0 : sqrt(known.map { ($0 - mean) * ($0 - mean) }.reduce(0, +) / Float(known.count))
         return Dictionary(uniqueKeysWithValues: members.map { ($0.id, quality($0, mean, std, taste)) })
-    }
-
-    /// 两张是不是拍的同一个东西：和“相似照片”里“角度不同”的标准一样（画面结构、颜色都接近，不看时间）
-    static func looksAlike(_ a: PhotoInfo, _ b: PhotoInfo) -> Bool {
-        Similarity.isSimilar(a.features, b.features, GroupParams())
-    }
-
-    /// 建议删哪些：精华、收藏的先算留下；其余从好到差一张张看，和留下的某张很像、或者明显拍糊的建议删，
-    /// 否则也留下（后面和它像的、更差的才删）
-    static func suggest(_ members: [PhotoInfo], _ highlights: [PhotoInfo], _ q: [String: Float]) -> [String] {
-        let hl = Set(highlights.map { $0.id })
-        var kept = highlights + members.filter { $0.favorite }
-        var out = Set<String>()
-        for m in members.filter({ !$0.favorite && !hl.contains($0.id) }).sorted(by: { q[$0.id]! > q[$1.id]! }) {
-            if BadShotRules.blurLevel(m.features, 1) == 2 || kept.contains(where: { looksAlike(m, $0) }) {
-                out.insert(m.id)
-            } else {
-                kept.append(m)
-            }
-        }
-        return members.map { $0.id }.filter { out.contains($0) }
     }
 
     static func quality(_ p: PhotoInfo, _ aesMean: Float, _ aesStd: Float, _ taste: Taste) -> Float {
