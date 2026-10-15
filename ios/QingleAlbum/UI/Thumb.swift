@@ -278,6 +278,9 @@ private struct BigImage: View {
         }
         .task(id: item.id) {
             if item.isVideo {
+                // 不设成“播放视频”，手机开着静音模式时播放没声音（用户反馈）。
+                // 只设类型、不马上激活：点播放才会打断别的 App 的音乐
+                try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
                 let o = PHVideoRequestOptions()
                 o.isNetworkAccessAllowed = true
                 PHImageManager.default().requestPlayerItem(forVideo: item.asset, options: o) { pi, _ in
@@ -293,7 +296,12 @@ private struct BigImage: View {
                 }
             }
         }
-        .onDisappear { player?.pause() }
+        .onDisappear {
+            guard let player else { return }
+            player.pause()
+            // 看完把声音还给别的 App（音乐接着放）
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 }
 

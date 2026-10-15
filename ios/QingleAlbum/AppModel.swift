@@ -286,6 +286,7 @@ final class AppModel: NSObject, ObservableObject, PHPhotoLibraryChangeObserver {
                     if Task.isCancelled { break }
                     failed += 1
                     lastError = error.localizedDescription
+                    if let f = error as? Compressor.Failure, f.permanent { Compressor.markFailed(m.id) }
                     Usage.event("视频没压成：\(error.localizedDescription)")
                 }
             }

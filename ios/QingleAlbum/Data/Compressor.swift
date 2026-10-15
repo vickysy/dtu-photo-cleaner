@@ -8,14 +8,30 @@ import Photos
  */
 enum Compressor {
     enum Failure: LocalizedError {
-        case unreadable, exportFailed(String), verifyFailed
+        case unreadable, exportFailed(String), verifyFailed, durationMismatch, notSmaller
         var errorDescription: String? {
             switch self {
             case .unreadable: return "读不到原视频"
             case .exportFailed(let m): return "转码失败：\(m)"
             case .verifyFailed: return "压出来的视频不对，已作废，原视频没动"
+            case .durationMismatch: return "压出来的视频时长对不上，已作废，原视频没动"
+            case .notSmaller: return "这个视频压了也小不了，原视频没动"
             }
         }
+        /// 换个时间再压也一样：记下来，以后不再推荐
+        var permanent: Bool {
+            switch self {
+            case .durationMismatch, .notSmaller: return true
+            default: return false
+            }
+        }
+    }
+
+    /// 压过但压不成的（时长对不上、没变小）：不再出现在“可压缩”里，免得一遍遍重试
+    private static let failedKey = "compress.failed"
+    static var failed: Set<String> { Set(UserDefaults.standard.stringArray(forKey: failedKey) ?? []) }
+    static func markFailed(_ id: String) {
+        UserDefaults.standard.set(Array(failed.union([id])), forKey: failedKey)
     }
 
     /// 压缩一个视频，返回压好的新视频 id。[onProgress] 0..1
@@ -47,7 +63,9 @@ enum Compressor {
         let out = AVURLAsset(url: url)
         let outDur = (try? await out.load(.duration)).map { CMTimeGetSeconds($0) } ?? 0
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0
-        guard abs(outDur * 1000 - Double(m.durationMs)) < 1500, size > 0, size < m.size else { throw Failure.verifyFailed }
+        guard size > 0 else { throw Failure.verifyFailed }
+        guard abs(outDur * 1000 - Double(m.durationMs)) < 1500 else { throw Failure.durationMismatch }
+        guard size < m.size else { throw Failure.notSmaller }
 
         var newId: String?
         try await PHPhotoLibrary.shared().performChanges {

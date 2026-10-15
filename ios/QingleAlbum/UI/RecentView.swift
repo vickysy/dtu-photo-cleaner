@@ -17,6 +17,16 @@ let aesHigh: Float = 5.5
 
 func aesRounded(_ s: Float) -> Float { (s * 10).rounded() / 10 }
 
+/// 照片上的美感分：4.3 及以下红色，5.5 及以上绿色
+struct AesBadge: View {
+    let score: Float
+    var body: some View {
+        let r = aesRounded(score)
+        PhotoBadge(text: String(format: "%.1f", r),
+                   bg: r <= aesLow ? Color.danger.opacity(0.9) : r >= aesHigh ? Color.brand.opacity(0.95) : .black.opacity(0.5))
+    }
+}
+
 /**
  刚拍的：先现场打分（几秒钟），好了就是一张照片格子，每张标着美感分。
  明显拍废的、连拍里不是最好的已经勾上；4.3 分及以下、有人闭眼的只标出来，不勾（和安卓 v2.8.5 一样：分数低不等于该删）。

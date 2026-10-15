@@ -1,4 +1,5 @@
 import Foundation
+import Photos
 
 struct BadItem: Identifiable {
     let item: MediaItem
@@ -204,8 +205,10 @@ struct Library {
         }
         let sessions = ShotSessions.split(images.filter { $0.isScreenshot }.map { ($0.id, $0.timeMs, $0.width, $0.height) })
 
-        // 压缩：相机拍的、码率高的视频；已经压过的、压出来的不再压；收藏的不动
+        // 压缩：相机拍的、码率高的视频；已经压过的、压出来的、压过但压不成的不再压；收藏的不动。
+        // 慢动作不压：帧率高看着码率大，可导出时慢放的那段会展开，时长对不上、也小不了，慢动作还会丢
         let compressedMap = Store.shared.loadCompressed()
+        let compressFailed = Compressor.failed
         let outputs = Set(compressedMap.values)
         let videoById = Dictionary(uniqueKeysWithValues: videos.map { ($0.id, $0) })
         let compressedPending: [CompressedPair] = compressedMap.compactMap { src, out in
@@ -213,7 +216,8 @@ struct Library {
             return CompressedPair(source: s, output: o)
         }
         let compressible: [CompressCandidate] = videos.compactMap { m in
-            guard m.isCameraShot, !m.favorite, m.durationMs > 0, compressedMap[m.id] == nil, !outputs.contains(m.id) else { return nil }
+            guard m.isCameraShot, !m.favorite, m.durationMs > 0, compressedMap[m.id] == nil, !outputs.contains(m.id),
+                  !compressFailed.contains(m.id), !m.asset.mediaSubtypes.contains(.videoHighFrameRate) else { return nil }
             let est = VideoRules.estimateSize(durationMs: m.durationMs, sourceBitrate: m.bitrate)
             return VideoRules.worthCompressing(size: m.size, estimated: est) ? CompressCandidate(item: m, estimated: est) : nil
         }.sorted { $0.saving > $1.saving }

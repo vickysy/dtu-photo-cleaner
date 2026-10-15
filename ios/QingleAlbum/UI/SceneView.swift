@@ -1,7 +1,7 @@
 import SwiftUI
 
 /**
- 场景精选：同一个地方拍了一堆，推荐留几张精华（兼顾好看和不重复），其余默认勾选。
+ 场景精选：同一个地方拍了一堆，推荐留几张精华（兼顾好看和不重复），其余默认勾选。每张标美感分（和安卓一样）。
  每个场景单独删、单独“全部保留”；底部“全部删除…”要先确认。
  */
 struct SceneListView: View {
@@ -25,7 +25,7 @@ struct SceneListView: View {
         let chosenBytes = chosenIds.reduce(Int64(0)) { $0 + (model.library?.byId[$1]?.size ?? 0) }
         ScrollView {
             VStack(spacing: 18) {
-                Footnote(text: "同一个地方连续拍了很多张时，帮你挑几张精华：构图好看、拍得清楚、没人闭眼，而且尽量是不同的画面。其余已经勾选，按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
+                Footnote(text: "同一个地方连续拍了很多张时，帮你挑几张精华：构图好看、拍得清楚、没人闭眼，而且尽量是不同的画面。每张左下角是美感分（1–10）。其余已经勾选，按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
                     .padding(.top, 8)
                 PreviewHint()
                 if scenes.isEmpty { Text("场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
@@ -123,6 +123,9 @@ private struct SceneCard: View {
                 ForEach(Array(items.enumerated()), id: \.element.id) { i, m in
                     PhotoCell(item: m, selected: selected.contains(m.id), tag: scene.highlights.contains(m.id) ? "精华" : scene.favorites.contains(m.id) ? "已收藏" : nil,
                               onToggle: { toggle(m.id) }, onOpen: { open(items, i) })
+                        .overlay(alignment: .bottomLeading) {
+                            if let a = model.library?.aesthetic[m.id] { AesBadge(score: a).padding(4) }
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .dragSelectCell(m.id, drag)
                 }
