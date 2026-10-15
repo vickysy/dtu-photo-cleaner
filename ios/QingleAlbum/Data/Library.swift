@@ -165,11 +165,17 @@ struct Library {
         let bigBytes = Int64(settings.bigVideoMB) * 1_000_000
         let bigVideos = videos.filter { $0.size >= bigBytes && !reviewed.contains($0.id) }.sorted { $0.size > $1.size }
 
+        // 压好了、等用户确认的一对（原视频 + 压缩版）：内容本来就一样，只在“压缩视频”里处理，
+        // 不算“重复保存”、不进视频场景（朋友看到“重复”，以为 App 偷偷复制了视频）
+        let compressedMap = Store.shared.loadCompressed()
+        let videoIds = Set(videos.map { $0.id })
+        let pendingCompress = Set(compressedMap.filter { videoIds.contains($0.key) && videoIds.contains($0.value) }.flatMap { [$0.key, $0.value] })
+
         // 视频：抽帧结果 → 黑屏、误录、重复保存、同场景多段；再加上不到 3 秒的
         let vstored = Store.shared.loadVideos()
         var videosUnanalyzed = 0
         var vinfos: [VideoInfo] = []
-        for m in videos where Analyzer.videoEligible(m) {
+        for m in videos where Analyzer.videoEligible(m) && !pendingCompress.contains(m.id) {
             guard let r = vstored[m.id], m.sameContent(asOf: r.mod), r.ver == Analyzer.videoVersion else { videosUnanalyzed += 1; continue }
             vinfos.append(VideoInfo(id: m.id, timeMs: m.timeMs, durationMs: m.durationMs, size: m.size, width: m.width, height: m.height,
                                     camera: m.isCameraShot, favorite: m.favorite, f: r.feat))
@@ -182,7 +188,7 @@ struct Library {
             .sorted { $0.startTime > $1.startTime }
         let vById = Dictionary(uniqueKeysWithValues: vinfos.map { ($0.id, $0) })
         let videoSuggest: [VideoSuggestion] = videos.compactMap { m in
-            guard !m.isScreenRecording, !m.favorite, !reviewed.contains(m.id) else { return nil }
+            guard !m.isScreenRecording, !m.favorite, !reviewed.contains(m.id), !pendingCompress.contains(m.id) else { return nil }
             var r: [VideoReason] = []
             if dups[m.id] != nil { r.append(.duplicate) }
             if m.durationMs > 0 && m.durationMs < 3000 { r.append(.short) }
@@ -205,9 +211,9 @@ struct Library {
         }
         let sessions = ShotSessions.split(images.filter { $0.isScreenshot }.map { ($0.id, $0.timeMs, $0.width, $0.height) })
 
-        // 压缩：相机拍的、码率高的视频；已经压过的、压出来的、压过但压不成的不再压；收藏的不动。
+        // 压缩：相机拍的、码率高的视频；正在等确认的、压出来的、压过但压不成的不再压；收藏的不动。
+        // 压缩版在别处被删了的原视频，可以再压。
         // 慢动作不压：帧率高看着码率大，可导出时慢放的那段会展开，时长对不上、也小不了，慢动作还会丢
-        let compressedMap = Store.shared.loadCompressed()
         let compressFailed = Compressor.failed
         let outputs = Set(compressedMap.values)
         let videoById = Dictionary(uniqueKeysWithValues: videos.map { ($0.id, $0) })
@@ -216,7 +222,7 @@ struct Library {
             return CompressedPair(source: s, output: o)
         }
         let compressible: [CompressCandidate] = videos.compactMap { m in
-            guard m.isCameraShot, !m.favorite, m.durationMs > 0, compressedMap[m.id] == nil, !outputs.contains(m.id),
+            guard m.isCameraShot, !m.favorite, m.durationMs > 0, !pendingCompress.contains(m.id), !outputs.contains(m.id),
                   !compressFailed.contains(m.id), !m.asset.mediaSubtypes.contains(.videoHighFrameRate) else { return nil }
             let est = VideoRules.estimateSize(durationMs: m.durationMs, sourceBitrate: m.bitrate)
             return VideoRules.worthCompressing(size: m.size, estimated: est) ? CompressCandidate(item: m, estimated: est) : nil
