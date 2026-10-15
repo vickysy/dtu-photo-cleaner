@@ -94,7 +94,7 @@ struct WelcomeView: View {
             Text("清了没？相册轻了，心也轻了").font(.subheadline).foregroundStyle(.secondary).padding(.top, 4)
             VStack(alignment: .leading, spacing: 20) {
                 feature("photo.stack", .brand, "每组只留最好的一张", "连拍、重复保存的照片，自动挑出最清楚、最好看的那张")
-                feature("sparkles", .brandYellow, "每个场景留几张精华", "同一个地方拍了几十张？帮你挑 3–5 张不重复的")
+                feature("sparkles", .brandYellow, "每个场景挑出精华", "同一个地方拍了几十张？标出最好的几张，拍重了的只留一张")
                 feature("lock.fill", .brand, "照片不出手机", "全在手机里分析，不上传。删除前系统都会问你，30 天内能恢复")
             }
             .padding(.top, 36)

@@ -145,8 +145,8 @@ struct Library {
         let scenes = SceneDetector.segment(cameraInfos)
             .filter { ms in Double(ms.filter { reviewed.contains($0.id) }.count) < Double(ms.count) * 0.8 }
             .map { SceneDetector.build($0, taste: taste) }
-            // 收藏的加精华已经是全部了：没有可删的，不用列出来
-            .filter { $0.keepIds.count < $0.members.count }
+            // 拍的都不一样又清楚（博物馆、逛展）：没有建议删的，不用列出来
+            .filter { !$0.suggested.isEmpty }
             .sorted { $0.startTime > $1.startTime }
         let groups = Grouper.group(infos, params)
             .map { Ranker.rank($0, keepCount: settings.keepPerGroup, taste: taste) }

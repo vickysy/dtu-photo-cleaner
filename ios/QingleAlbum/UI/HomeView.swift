@@ -22,7 +22,7 @@ func categories(_ lib: Library) -> [Category] {
     let groupThumbs = lib.groups.prefix(4).compactMap { g in g.members.first { $0.best }.flatMap { lib.byId[$0.photo.id] } }
     let old = lib.oldScreenshots()
     return [
-        Category(id: .scenes, title: "场景精选", summary: "\(lib.scenes.count) 个场景，各留几张", count: lib.scenes.count,
+        Category(id: .scenes, title: "场景精选", summary: "\(lib.scenes.count) 个场景，拍重的只留最好的", count: lib.scenes.count,
                  reclaim: lib.sceneDeleteBytes, sizeText: Fmt.bytes(lib.sceneDeleteBytes), thumbs: Array(sceneThumbs)),
         Category(id: .similar, title: "相似照片", summary: "\(lib.groups.count) 组，各留最好的", count: lib.groups.count,
                  reclaim: lib.groupDeleteBytes, sizeText: Fmt.bytes(lib.groupDeleteBytes), thumbs: Array(groupThumbs)),

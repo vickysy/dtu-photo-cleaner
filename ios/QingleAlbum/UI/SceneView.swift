@@ -1,7 +1,8 @@
 import SwiftUI
 
 /**
- 场景精选：同一个地方拍了一堆，推荐留几张精华（兼顾好看和不重复），其余默认勾选。每张标美感分（和安卓一样）。
+ 场景精选：同一个地方拍了一堆，同一个东西拍了好几张的只留最好的，明显拍糊的也勾上；拍的不一样又清楚的都留着。
+ 标出几张精华（兼顾好看和不重复），点“只留精华”就回到只留精华。每张标美感分（和安卓一样）。
  每个场景单独删、单独“全部保留”；底部“全部删除…”要先确认。
  */
 struct SceneListView: View {
@@ -25,7 +26,7 @@ struct SceneListView: View {
         let chosenBytes = chosenIds.reduce(Int64(0)) { $0 + (model.library?.byId[$1]?.size ?? 0) }
         ScrollView {
             VStack(spacing: 18) {
-                Footnote(text: "同一个地方连续拍了很多张时，帮你挑几张精华：构图好看、拍得清楚、没人闭眼，而且尽量是不同的画面。每张左下角是美感分（1–10）。其余已经勾选，按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
+                Footnote(text: "同一个地方连续拍了很多张时：同一个东西拍了好几张的，只留最好的那张，其余勾上；明显拍糊的也勾上。拍的东西不一样、又清楚的都留着。标“精华”的是这个场景里最好的几张，想只留它们就点“只留精华”。每张左下角是美感分（1–10）。按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
                     .padding(.top, 8)
                 PreviewHint()
                 if scenes.isEmpty { Text("场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
@@ -87,9 +88,10 @@ struct SceneListView: View {
 
 /// 卡片里的先后顺序：精华在前（按推荐顺序），然后是收藏的，其余按时间
 private func displayIds(_ scene: PhotoScene) -> [String] {
-    let keep = scene.keepIds
+    let top = scene.highlights + scene.favorites
+    let topSet = Set(top)
     let members = Set(scene.members.map { $0.id })
-    return (scene.highlights + scene.favorites).filter { members.contains($0) } + scene.members.map { $0.id }.filter { !keep.contains($0) }
+    return top.filter { members.contains($0) } + scene.members.map { $0.id }.filter { !topSet.contains($0) }
 }
 
 private struct SceneCard: View {
@@ -115,7 +117,7 @@ private struct SceneCard: View {
                     }
                 }
                 Spacer()
-                Text("留 \(scene.keepCount) 张精华").font(.subheadline)
+                Text("精华 \(scene.keepCount) 张").font(.subheadline)
                 Stepper("", value: Binding(get: { scene.keepCount }, set: { setKeep($0) }), in: 1...max(1, scene.members.count - scene.favorites.count))
                     .labelsHidden()
             }
@@ -130,10 +132,19 @@ private struct SceneCard: View {
                         .dragSelectCell(m.id, drag)
                 }
             }
-            HStack {
+            HStack(spacing: 18) {
                 if !dropped.isEmpty {
                     Button("全部保留") { model.markReviewed(scene.members.map { $0.id }) }
                         .font(.subheadline).foregroundStyle(Color.accentText)
+                }
+                // 回到原来的做法：除了精华和收藏的都勾上
+                let others = scene.members.filter { !scene.highlights.contains($0.id) && !scene.favorites.contains($0.id) }
+                if others.contains(where: { !selected.contains($0.id) }) {
+                    Button("只留精华") {
+                        Usage.add("场景.只留精华")
+                        others.forEach { selected.insert($0.id) }
+                    }
+                    .font(.subheadline).foregroundStyle(Color.accentText)
                 }
                 Spacer()
                 if dropped.isEmpty {
