@@ -1,11 +1,58 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
-/// 系统分享面板（微信、得到、备忘录……）
+/// 系统分享面板（微信、得到、备忘录……）。图片文件换成 [ShareImage] 交出去
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items.map { item in
+            if let url = item as? URL, let image = ShareImage(url: url) { return image }
+            return item
+        }, applicationActivities: nil)
+    }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/**
+ 分享出去的一张图：以“图片”的身份交给分享面板，不是“文件”。
+ 很多 App 的分享规则是“图片能收好几张、文件只收一个”：以前分享的是图片文件，
+ 选一张时得到大脑、Get笔记还在列表里，选两张就不见了。
+ 存到“文件”、隔空投送照样给原文件（保留文件名）；存回相册给图片；别的 App 给图片数据。
+ */
+final class ShareImage: NSObject, UIActivityItemSource {
+    let url: URL
+    private let type: UTType
+    private let thumb: UIImage
+
+    init?(url: URL) {
+        guard url.isFileURL, let type = UTType(filenameExtension: url.pathExtension), type.conforms(to: .image),
+              let src = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 240,
+              ] as CFDictionary) else { return nil }
+        self.url = url
+        self.type = type
+        self.thumb = UIImage(cgImage: cg)
+    }
+
+    func activityViewControllerPlaceholderItem(_ vc: UIActivityViewController) -> Any { thumb }
+
+    func activityViewController(_ vc: UIActivityViewController, itemForActivityType t: UIActivity.ActivityType?) -> Any? {
+        if t == .airDrop || (t?.rawValue.contains("SaveToFiles") ?? false) { return url }
+        if t == .saveToCameraRoll { return UIImage(contentsOfFile: url.path) }
+        return (try? Data(contentsOf: url)) ?? url
+    }
+
+    func activityViewController(_ vc: UIActivityViewController, dataTypeIdentifierForActivityType t: UIActivity.ActivityType?) -> String {
+        type.identifier
+    }
+
+    func activityViewController(_ vc: UIActivityViewController, thumbnailImageForActivityType t: UIActivity.ActivityType?, suggestedSize size: CGSize) -> UIImage? {
+        thumb
+    }
 }
 
 struct ShareItems: Identifiable {
