@@ -18,7 +18,7 @@ struct ShareSheet: UIViewControllerRepresentable {
  分享出去的一张图：以“图片”的身份交给分享面板，不是“文件”。
  很多 App 的分享规则是“图片能收好几张、文件只收一个”：以前分享的是图片文件，
  选一张时得到大脑、Get笔记还在列表里，选两张就不见了。
- 存到“文件”、隔空投送照样给原文件（保留文件名）；存回相册给图片；别的 App 给图片数据。
+ 列表里按“图片”出现；真正交出去的是原文件（保留文件名），存回相册给图片。
  */
 final class ShareImage: NSObject, UIActivityItemSource {
     let url: URL
@@ -41,9 +41,10 @@ final class ShareImage: NSObject, UIActivityItemSource {
     func activityViewControllerPlaceholderItem(_ vc: UIActivityViewController) -> Any { thumb }
 
     func activityViewController(_ vc: UIActivityViewController, itemForActivityType t: UIActivity.ActivityType?) -> Any? {
-        if t == .airDrop || (t?.rawValue.contains("SaveToFiles") ?? false) { return url }
+        // 真正交出去的还是原文件（带 .jpg/.png 文件名）：得到大脑这类 App 看文件名认格式，
+        // 只给图片数据会提示“不支持的内容类型”。列表里出不出现，看的是上面那张小图（图片）
         if t == .saveToCameraRoll { return UIImage(contentsOfFile: url.path) }
-        return (try? Data(contentsOf: url)) ?? url
+        return url
     }
 
     func activityViewController(_ vc: UIActivityViewController, dataTypeIdentifierForActivityType t: UIActivity.ActivityType?) -> String {
