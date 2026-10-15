@@ -60,9 +60,13 @@ struct PhotoCell: View {
             }
             .overlay(alignment: .bottomLeading) {
                 if item.isVideo {
-                    HStack(spacing: 2) {
-                        Image(systemName: "play.fill").font(.system(size: 9))
-                        Text(Fmt.duration(item.durationMs)).font(.system(size: 11, weight: .semibold))
+                    // 清晰度单独一行：一行放不下时长 + 1080p，会压到右下角的勾选圈
+                    VStack(alignment: .leading, spacing: 1) {
+                        if let r = item.resolution { Text(r).font(.system(size: 10, weight: .bold)) }
+                        HStack(spacing: 2) {
+                            Image(systemName: "play.fill").font(.system(size: 9))
+                            Text(Fmt.duration(item.durationMs)).font(.system(size: 11, weight: .semibold))
+                        }
                     }
                     .foregroundStyle(.white).shadow(radius: 2).padding(5)
                 }

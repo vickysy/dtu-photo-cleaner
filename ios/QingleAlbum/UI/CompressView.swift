@@ -101,9 +101,9 @@ private struct PairRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                tile(pair.source, "原视频 \(Fmt.bytes(pair.source.size))", 0)
+                tile(pair.source, label("原视频", pair.source), 0)
                 Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                tile(pair.output, "压缩版 \(Fmt.bytes(pair.output.size))", 1)
+                tile(pair.output, label("压缩版", pair.output), 1)
             }
             HStack {
                 Button("不要压缩版") { Task { await model.discardCompressed(pair) } }
@@ -115,6 +115,10 @@ private struct PairRow: View {
             }
         }
         .padding(14).card(16).padding(.horizontal, 16)
+    }
+
+    private func label(_ name: String, _ m: MediaItem) -> String {
+        ([name] + [m.resolution, Fmt.bytes(m.size)].compactMap { $0 }).joined(separator: " ")
     }
 
     private func tile(_ m: MediaItem, _ label: String, _ i: Int) -> some View {

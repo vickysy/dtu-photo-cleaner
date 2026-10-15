@@ -23,6 +23,13 @@ struct MediaItem: Identifiable, Hashable {
     let lng: Double?
 
     var maxSide: Int { max(width, height) }
+    /// 视频清晰度：4K、1080p、720p……按短边算（竖着拍的也对），裁过一点的往常见档位上靠
+    var resolution: String? {
+        guard isVideo else { return nil }
+        let s = min(width, height)
+        if s >= 2000 { return "4K" }
+        return [1440, 1080, 720, 540, 480, 360].first { Double(s) >= Double($0) * 0.9 }.map { "\($0)p" }
+    }
 
     /**
      以前在 [mod] 那个修改时间分析过，现在的内容还是不是那时的样子。
