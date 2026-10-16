@@ -55,7 +55,7 @@ struct RecentView: View {
                     }
                     .padding(16).card(14).padding(.horizontal, 16).padding(.top, 8)
                 } else {
-                    Footnote(text: "\(recent.label)拍的 \(items.count) 张，每张标了美感分（1–10）。明显拍废的、连拍里不是最好的已经勾上；4.3 分及以下（红色）、有人闭眼的只标出来，看一眼再决定。按住横着一划可以连续选，点放大镜看大图。")
+                    Footnote(text: "\(recent.label)拍的 \(items.count) 张，每张标了美感分（1–10）。明显拍废的、连拍里不是最好的已经勾上；4.3 分及以下（红色）、有人闭眼的只标出来，看一眼再决定。按住慢慢横着划可以连续选，点放大镜看大图。")
                         .padding(.top, 8)
                     PreviewHint()
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {

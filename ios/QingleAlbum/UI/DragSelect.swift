@@ -49,8 +49,22 @@ final class DragSelector: NSObject, UIGestureRecognizerDelegate {
         sv.addGestureRecognizer(p)
         // 列表先等一下：确定不是横着划，再交给它滚
         sv.panGestureRecognizer.require(toFail: p)
+        // iOS 26 起页面中间往右划也是“返回”，慢慢划会被它抢走、划选用不了。让返回也先等一下：
+        // 快速一划、不在照片上起手、竖着动的，划选马上放弃，返回照常
+        if #available(iOS 26.0, *), let nav = Self.navigationController(of: sv) {
+            nav.interactiveContentPopGestureRecognizer?.require(toFail: p)
+        }
         pan = p
         scrollView = sv
+    }
+
+    private static func navigationController(of view: UIView) -> UINavigationController? {
+        var r: UIResponder? = view
+        while let x = r {
+            if let vc = x as? UIViewController { return vc.navigationController }
+            r = x.next
+        }
+        return nil
     }
 
     fileprivate func detach() {
@@ -81,13 +95,21 @@ final class DragSelector: NSObject, UIGestureRecognizerDelegate {
         return true
     }
 
+    /// 往右划超过这个速度（点/秒）算“返回”
+    static let backSwipeSpeed: CGFloat = 600
+
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         guard enabled, let p = g as? UIPanGestureRecognizer, let host, selection != nil else { return false }
         // 屏幕左边缘留给“滑动返回”
         if downInWindow.x < 28 { return false }
-        // 先横着动才算划选，先竖着动就是滚动
+        // 先横着动才算划选，先竖着动就是滚动。
+        // iOS 26 起这里的移动距离常常还是 0（以前靠它判断，划选根本开始不了），没有距离就看速度的方向
         let t = p.translation(in: host)
-        guard abs(t.x) > abs(t.y) * 1.2 else { return false }
+        let v = p.velocity(in: host)
+        let d = t == .zero ? v : t
+        guard abs(d.x) > abs(d.y) * 1.2 else { return false }
+        // 快速往右一划是“返回”（iOS 26 起页面中间也能右滑返回）：不算划选，交给返回。慢慢划才算划选
+        if d.x > 0 && v.x > Self.backSwipeSpeed { return false }
         order = ids()
         index = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
         return cell(at: downPoint) != nil

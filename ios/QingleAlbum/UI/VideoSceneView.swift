@@ -126,7 +126,7 @@ private struct VideoSceneCard: View {
                         .dragSelectCell(m.id, drag)
                 }
             }
-            Text("点视频切换删/留，按住横着一划可以连续切换，点放大镜播放。打勾的会删掉。").font(.caption).foregroundStyle(.secondary)
+            Text("点视频切换删/留，按住慢慢横着划可以连续切换，点放大镜播放。打勾的会删掉。").font(.caption).foregroundStyle(.secondary)
             HStack {
                 if !dropped.isEmpty {
                     Button("全部保留") { model.markReviewed(scene.members.map { $0.id }) }

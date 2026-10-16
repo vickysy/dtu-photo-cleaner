@@ -2,42 +2,31 @@ import SwiftUI
 
 /**
  场景精选：同一个地方拍了一堆，同一个东西拍了好几张的只留最好的，明显拍糊的也勾上；拍的不一样又清楚的都留着。
- 标出几张精华（兼顾好看和不重复），点“只留精华”就回到只留精华。每张标美感分（和安卓一样）。
+ 不标“精华”（和绿勾、绿色标签分不清，木妈定的）：最好的几张排在前面，点“只留最好的 N 张”就只留它们。
+ 勾上 = 要删，红勾。每张标美感分（和安卓一样）。
  每个场景单独删、单独“全部保留”；底部“全部删除…”要先确认。
  */
 struct SceneListView: View {
     @EnvironmentObject var model: AppModel
-    /// 用户改过“留几张”的场景：场景 id → 张数
-    @State private var keepOverride: [String: Int] = [:]
     @State private var selected = Set<String>()
-    @State private var initialized: Set<String> = []
+    /// 每个场景上次按哪一版建议勾的（场景 id → 建议）
+    @State private var initialized: [String: String] = [:]
     @State private var viewer: ViewerTarget?
     @State private var deleting: DeleteRequest?
     @State private var drag = DragSelector()
 
-    private func scene(_ sc: PhotoScene) -> PhotoScene {
-        guard let k = keepOverride[sc.id], k != sc.keepCount else { return sc }
-        return sc.rebuilt(keep: k)
-    }
-
     var body: some View {
-        let scenes = (model.library?.scenes ?? []).map(scene)
+        let scenes = model.library?.scenes ?? []
         let chosenIds = scenes.flatMap { $0.members.map { $0.id }.filter { selected.contains($0) } }
         let chosenBytes = chosenIds.reduce(Int64(0)) { $0 + (model.library?.byId[$1]?.size ?? 0) }
         ScrollView {
             VStack(spacing: 18) {
-                Footnote(text: "同一个地方连续拍了很多张时：同一个东西拍了好几张的，只留最好的那张，其余勾上；明显拍糊的也勾上。拍的东西不一样、又清楚的都留着。标“精华”的是这个场景里最好的几张，想只留它们就点“只留精华”。每张左下角是美感分（1–10）。按住横着一划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
+                Footnote(text: "同一个地方连续拍了很多张时：同一个东西拍了好几张的，只留最好的那张，其余打上红勾（要删）；明显拍糊的也打上。拍的东西不一样、又清楚的都留着。最好的几张排在最前面，想只留它们就点“只留最好的几张”。每张左下角是美感分（1–10）。按住慢慢横着划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
                     .padding(.top, 8)
                 PreviewHint()
                 if scenes.isEmpty { Text("场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
                 ForEach(scenes) { sc in
                     SceneCard(scene: sc, selected: $selected, drag: drag,
-                              setKeep: { k in
-                                  keepOverride[sc.id] = k
-                                  let rebuilt = sc.rebuilt(keep: k)
-                                  sc.members.forEach { selected.remove($0.id) }
-                                  rebuilt.suggested.forEach { selected.insert($0) }
-                              },
                               open: { items, i in viewer = ViewerTarget(items: items, start: i) },
                               confirm: { deleting = $0 })
                 }
@@ -81,15 +70,16 @@ struct SceneListView: View {
     /// 新出现的场景、建议变了的场景，按推荐重新勾（先清掉这个场景原来的勾，免得精华、收藏的还勾着）；
     /// 用户改过勾选、建议没变的场景不动
     private func initSelection(_ scenes: [PhotoScene]) {
-        for sc in scenes where !initialized.contains(Self.key(sc)) {
+        // 只跟上一次比：建议变了又变回来，也要重新勾（不然勾的还是中间那一版，精华可能还勾着）
+        for sc in scenes where initialized[sc.id] != Self.key(sc) {
             sc.members.forEach { selected.remove($0.id) }
             sc.suggested.forEach { selected.insert($0) }
-            initialized.insert(Self.key(sc))
+            initialized[sc.id] = Self.key(sc)
         }
     }
 }
 
-/// 卡片里的先后顺序：精华在前（按推荐顺序），然后是收藏的，其余按时间
+/// 卡片里的先后顺序：最好的几张在前（按推荐顺序），然后是收藏的，其余按时间
 private func displayIds(_ scene: PhotoScene) -> [String] {
     let top = scene.highlights + scene.favorites
     let topSet = Set(top)
@@ -102,7 +92,6 @@ private struct SceneCard: View {
     let scene: PhotoScene
     @Binding var selected: Set<String>
     let drag: DragSelector
-    let setKeep: (Int) -> Void
     let open: ([MediaItem], Int) -> Void
     let confirm: (DeleteRequest) -> Void
 
@@ -120,13 +109,10 @@ private struct SceneCard: View {
                     }
                 }
                 Spacer()
-                Text("精华 \(scene.keepCount) 张").font(.subheadline)
-                Stepper("", value: Binding(get: { scene.keepCount }, set: { setKeep($0) }), in: 1...max(1, scene.maxHighlights))
-                    .labelsHidden()
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 4), spacing: 3) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { i, m in
-                    PhotoCell(item: m, selected: selected.contains(m.id), tag: scene.highlights.contains(m.id) ? "精华" : scene.favorites.contains(m.id) ? "已收藏" : nil,
+                    PhotoCell(item: m, selected: selected.contains(m.id), tag: scene.favorites.contains(m.id) ? "已收藏" : nil,
                               onToggle: { toggle(m.id) }, onOpen: { open(items, i) })
                         .overlay(alignment: .bottomLeading) {
                             if let a = model.library?.aesthetic[m.id] { AesBadge(score: a).padding(4) }
@@ -138,16 +124,17 @@ private struct SceneCard: View {
             HStack(spacing: 18) {
                 if !dropped.isEmpty {
                     Button("全部保留") { model.markReviewed(scene.members.map { $0.id }) }
-                        .font(.subheadline).foregroundStyle(Color.accentText)
+                        .font(.subheadline).foregroundStyle(Color.accentText).fixedSize()
                 }
-                // 回到原来的做法：除了精华和收藏的都勾上
+                // 回到原来的做法：除了最好的几张和收藏的都勾上
                 let others = scene.members.filter { !scene.highlights.contains($0.id) && !scene.favorites.contains($0.id) }
                 if others.contains(where: { !selected.contains($0.id) }) {
-                    Button("只留精华") {
+                    Button("只留最好的 \(scene.highlights.count) 张") {
                         Usage.add("场景.只留精华")
                         others.forEach { selected.insert($0.id) }
                     }
-                    .font(.subheadline).foregroundStyle(Color.accentText)
+                    // 不折行：放不下时右边的删除按钮去掉大小
+                    .font(.subheadline).foregroundStyle(Color.accentText).fixedSize()
                 }
                 Spacer()
                 if dropped.isEmpty {
@@ -160,7 +147,7 @@ private struct SceneCard: View {
                             Task { await model.delete(items, kept: kept) }
                         })
                     }
-                    // 左边有“全部保留”“只留精华”两个时，窄屏放不下大小就只写张数（不然大小被截成“15…”）
+                    // 左边有“全部保留”“只留最好的几张”两个时，窄屏放不下大小就只写张数（不然大小被截成“15…”）
                     ViewThatFits(in: .horizontal) {
                         CapsuleButton(title: "删除 \(dropped.count) 张 · \(Fmt.bytes(bytes))", color: .danger, action: run)
                         CapsuleButton(title: "删除 \(dropped.count) 张", color: .danger, action: run)

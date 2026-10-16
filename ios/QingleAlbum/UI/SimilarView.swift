@@ -27,7 +27,7 @@ struct SimilarView: View {
                     Text("角度不同 \(all.filter { !$0.nearIdentical }.count)").tag(false)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 8)
-                Footnote(text: near ? "连拍、重复保存的，每组留最清楚、最好看的一张（绿色标签），其余已经勾上。按住横着一划可以连续选。"
+                Footnote(text: near ? "连拍、重复保存的，每组留最清楚、最好看的一张（绿色标签），其余已经勾上。按住慢慢横着划可以连续选。"
                     : "同一个地方换了角度拍的。这类最容易判断错（比如不同的人、不同页的文件），所以没帮你勾，只标出推荐留哪张；分不出高下的标“差不多”。想删就自己点，或点“按推荐勾选”。")
                 PreviewHint()
                 if groups.isEmpty {

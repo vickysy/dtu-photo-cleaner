@@ -122,13 +122,15 @@ struct CapsuleButton: View {
     }
 }
 
-/// 勾选圈：选中 = 要删，绿底白勾
+/// 勾选圈：选中 = 要删，红底白勾
 struct SelectCircle: View {
     let selected: Bool
     var size: CGFloat = 23
+    /// 勾上是什么颜色：清理页勾上 = 要删，红色（绿勾和绿色的“推荐”“最佳”标签分不清）；压缩、挑着分享这类用绿色
+    var tint: Color = .danger
     var body: some View {
         ZStack {
-            Circle().fill(selected ? Color.brand : Color.black.opacity(0.18))
+            Circle().fill(selected ? tint : Color.black.opacity(0.18))
             Circle().stroke(Color.white, lineWidth: 1.5)
             if selected { Image(systemName: "checkmark").font(.system(size: size * 0.5, weight: .bold)).foregroundStyle(.white) }
         }

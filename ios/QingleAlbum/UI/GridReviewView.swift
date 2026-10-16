@@ -30,9 +30,9 @@ struct GridReviewView: View {
 
     private var note: String {
         switch kind {
-        case .bad: return "拍糊的、太暗的、误拍的纯色画面。背景虚化（人像模式）的照片只要主体清楚就不算糊。“可能模糊”的没有勾，点放大镜看大图再决定。按住照片横着一划可以连续选。"
-        case .screenshots: return "超过 \(model.settings.screenshotDays) 天的截图已经勾选；取件码、验证码、付款码这类用完就没用的，3 天前的就勾上；证件永远不勾。按住横着一划可以连续选。"
-        case .bigVideos: return "超过 \(model.settings.bigVideoMB) MB 的视频，从大到小排。都没勾，点放大镜播放看一眼再决定；按住横着一划可以连续选。"
+        case .bad: return "拍糊的、太暗的、误拍的纯色画面。背景虚化（人像模式）的照片只要主体清楚就不算糊。“可能模糊”的没有勾，点放大镜看大图再决定。按住照片慢慢横着划可以连续选。"
+        case .screenshots: return "超过 \(model.settings.screenshotDays) 天的截图已经勾选；取件码、验证码、付款码这类用完就没用的，3 天前的就勾上；证件永远不勾。按住慢慢横着划可以连续选。"
+        case .bigVideos: return "超过 \(model.settings.bigVideoMB) MB 的视频，从大到小排。都没勾，点放大镜播放看一眼再决定；按住慢慢横着划可以连续选。"
         case .videos: return "每个视频抽了 5 帧来看：黑屏、没拍到东西、重复保存的、不到 3 秒的已经勾选；“可能全程模糊”的没勾，点放大镜播放看一眼再决定。同一个场景拍了好几段的，在首页“视频场景精选”里。"
         }
     }

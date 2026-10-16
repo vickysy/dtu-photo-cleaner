@@ -48,6 +48,8 @@ struct PhotoCell: View {
     let item: MediaItem
     let selected: Bool
     var tag: String?
+    /// 勾上的颜色：默认红色（要删）
+    var selectTint: Color = .danger
     let onToggle: () -> Void
     let onOpen: () -> Void
 
@@ -71,7 +73,7 @@ struct PhotoCell: View {
                     .foregroundStyle(.white).shadow(radius: 2).padding(5)
                 }
             }
-            .overlay(alignment: .bottomTrailing) { SelectCircle(selected: selected, size: 22).padding(5) }
+            .overlay(alignment: .bottomTrailing) { SelectCircle(selected: selected, size: 22, tint: selectTint).padding(5) }
             // 放大镜：用户反馈过“找不到大图”（只能长按），和安卓 v2.8.5 一样放一个看得见的入口
             .overlay(alignment: .topTrailing) { ZoomButton(action: { Usage.add("看大图"); onOpen() }) }
             .contentShape(Rectangle())

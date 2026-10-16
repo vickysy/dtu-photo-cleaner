@@ -23,7 +23,7 @@ struct AestheticView: View {
                     Text("最差的在前").tag(false)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 16).padding(.top, 8)
-                Footnote(text: "\(Fmt.count(items.count)) 张相机照片按构图、色彩、清晰度打了分（iOS 自带的美感评估，换算成 1–10）。\(low) 张 4.3 分及以下。没有预选，点放大镜看大图，自己挑着删；按住横着一划可以连续选。")
+                Footnote(text: "\(Fmt.count(items.count)) 张相机照片按构图、色彩、清晰度打了分（iOS 自带的美感评估，换算成 1–10）。\(low) 张 4.3 分及以下。没有预选，点放大镜看大图，自己挑着删；按住慢慢横着划可以连续选。")
                 PreviewHint()
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: 3), spacing: 2) {
                     ForEach(Array(scored.enumerated()), id: \.element.0.id) { i, e in

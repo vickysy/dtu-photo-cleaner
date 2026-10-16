@@ -132,7 +132,7 @@ struct AlbumView: View {
         let allSelected = !visible.isEmpty && visible.allSatisfy { selected.contains($0.id) }
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Footnote(text: note + "\n" + (selecting ? "点照片勾选，按住横着一划可以连续选，点放大镜看大图。" :
+                Footnote(text: note + "\n" + (selecting ? "点照片勾选，按住慢慢横着划可以连续选，点放大镜看大图。" :
                     fixedIds != nil ? "点开看大图，左右滑一张张看；点右上角“选择”挑出要的几张，再拼成长图或整理成文字。"
                     : "点开看大图；点右上角“选择”可以多选，拼成长图发给朋友或得到。"))
                     .padding(.top, 8)
@@ -199,7 +199,7 @@ struct AlbumView: View {
                 if model.praise.contains(m.id) { PhotoBadge(text: "好评", icon: "star.fill", iconTint: .brandYellow).padding(4) }
             }
             .overlay(alignment: .bottomTrailing) {
-                if selecting { SelectCircle(selected: selected.contains(m.id), size: 22).padding(5) }
+                if selecting { SelectCircle(selected: selected.contains(m.id), size: 22, tint: .brand).padding(5) }
             }
             .overlay(alignment: .topTrailing) {
                 if selecting { ZoomButton { Usage.add("看大图"); viewer = ViewerTarget(items: visible, start: i) } }
