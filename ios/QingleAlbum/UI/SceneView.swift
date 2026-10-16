@@ -2,12 +2,15 @@ import SwiftUI
 
 /**
  场景精选：同一个地方拍了一堆，同一个东西拍了好几张的只留最好的，明显拍糊的也勾上；拍的不一样又清楚的都留着。
- 不标“精华”（和绿勾、绿色标签分不清，木妈定的）：最好的几张排在前面，点“只留最好的 N 张”就只留它们。
+ 不标“精华”（和绿勾、绿色标签分不清，木妈定的）：最好的几张排在前面，右上角加减“最好的几张”，
+ 点“只留最好的 N 张”就只留它们。
  勾上 = 要删，红勾。每张标美感分（和安卓一样）。
  每个场景单独删、单独“全部保留”；底部“全部删除…”要先确认。
  */
 struct SceneListView: View {
     @EnvironmentObject var model: AppModel
+    /// 用户改过“最好的几张”的场景：场景 id → 张数
+    @State private var keepOverride: [String: Int] = [:]
     @State private var selected = Set<String>()
     /// 每个场景上次按哪一版建议勾的（场景 id → 建议）
     @State private var initialized: [String: String] = [:]
@@ -15,18 +18,30 @@ struct SceneListView: View {
     @State private var deleting: DeleteRequest?
     @State private var drag = DragSelector()
 
+    private func scene(_ sc: PhotoScene) -> PhotoScene {
+        guard let k = keepOverride[sc.id], k != sc.keepCount else { return sc }
+        return sc.rebuilt(keep: k)
+    }
+
     var body: some View {
-        let scenes = model.library?.scenes ?? []
+        let scenes = (model.library?.scenes ?? []).map(scene)
         let chosenIds = scenes.flatMap { $0.members.map { $0.id }.filter { selected.contains($0) } }
         let chosenBytes = chosenIds.reduce(Int64(0)) { $0 + (model.library?.byId[$1]?.size ?? 0) }
         ScrollView {
             VStack(spacing: 18) {
-                Footnote(text: "同一个地方连续拍了很多张时：同一个东西拍了好几张的，只留最好的那张，其余打上红勾（要删）；明显拍糊的也打上。拍的东西不一样、又清楚的都留着。最好的几张排在最前面，想只留它们就点“只留最好的几张”。每张左下角是美感分（1–10）。按住慢慢横着划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
+                Footnote(text: "同一个地方连续拍了很多张时：同一个东西拍了好几张的，只留最好的那张，其余打上红勾（要删）；明显拍糊的也打上。拍的东西不一样、又清楚的都留着。最好的几张排在最前面（右上角加减张数），想只留它们就点“只留最好的几张”。每张左下角是美感分（1–10）。按住慢慢横着划可以连续切换。只点这个场景自己的“删除”，不会动别的场景。")
                     .padding(.top, 8)
                 PreviewHint()
                 if scenes.isEmpty { Text("场景都处理完了").foregroundStyle(.secondary).padding(.top, 60) }
                 ForEach(scenes) { sc in
                     SceneCard(scene: sc, selected: $selected, drag: drag,
+                              setKeep: { k in
+                                  keepOverride[sc.id] = k
+                                  // 张数变了，最好的几张跟着变：这个场景按新的建议重新勾
+                                  let rebuilt = sc.rebuilt(keep: k)
+                                  sc.members.forEach { selected.remove($0.id) }
+                                  rebuilt.suggested.forEach { selected.insert($0) }
+                              },
                               open: { items, i in viewer = ViewerTarget(items: items, start: i) },
                               confirm: { deleting = $0 })
                 }
@@ -92,6 +107,7 @@ private struct SceneCard: View {
     let scene: PhotoScene
     @Binding var selected: Set<String>
     let drag: DragSelector
+    let setKeep: (Int) -> Void
     let open: ([MediaItem], Int) -> Void
     let confirm: (DeleteRequest) -> Void
 
@@ -109,6 +125,9 @@ private struct SceneCard: View {
                     }
                 }
                 Spacer()
+                Text("最好的 \(scene.keepCount) 张").font(.subheadline)
+                Stepper("", value: Binding(get: { scene.keepCount }, set: { setKeep($0) }), in: 1...max(1, scene.maxHighlights))
+                    .labelsHidden()
             }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 4), spacing: 3) {
                 ForEach(Array(items.enumerated()), id: \.element.id) { i, m in
