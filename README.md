@@ -77,16 +77,18 @@
 能不能装：
 - 安卓 11 及以上：小米、OPPO、vivo、荣耀、一加等都可以
 - 华为鸿蒙 4 及以前可以；鸿蒙 5 及以上（纯血鸿蒙）不行
-- iPhone：有原生的 iPhone 版，还在测试，目前只能自己用 Xcode 装（见下面“iPhone 版（预览）”）
+- iPhone：在 App Store 下载（需要 iOS 18 或以上）：https://apps.apple.com/cn/app/id6821858982 ，见下面“iPhone 版”
 - 目前只在荣耀 MagicOS 10（安卓 16）真机上完整测过，其他手机遇到问题欢迎反馈
 
 升级：下载新版本直接覆盖安装，分析结果和设置都会保留。
 
-## iPhone 版（预览）
+## iPhone 版
 
-`ios/` 是原生的 iPhone 版（SwiftUI），判断规则从安卓版逐行移植过来，同样的测试图算出来的清晰度、画面指纹完全一致。目前只在一台 iPhone 14 Pro Max（iOS 18.7）上用真实相册测过。
+**下载**：App Store 搜“轻了相册”，或者打开 https://apps.apple.com/cn/app/id6821858982 。需要 iOS 18 或以上，免费、不用注册。
 
-还没有 App Store、TestFlight 的下载链接，现在只能自己用 Mac 编译安装：
+`ios/` 是原生的 iPhone 版（SwiftUI），判断规则从安卓版逐行移植过来，同样的测试图算出来的清晰度、画面指纹完全一致。
+
+想从源码自己装（比如改了代码想试试），用 Mac 编译安装：
 
 - 需要：一台 Mac，装 Xcode 26（第一次还要在 Xcode → Settings → Components 下载 iOS 组件，约 8 GB）；iPhone 系统 iOS 18 或以上；一个 Apple ID（免费的就行）；能传数据的数据线。
 - 步骤：
